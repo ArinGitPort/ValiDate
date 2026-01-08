@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/warranty_item.dart';
+import '../services/notification_service.dart';
 
 class WarrantyProvider with ChangeNotifier {
   static const String boxName = 'warranties';
@@ -41,6 +42,15 @@ class WarrantyProvider with ChangeNotifier {
   Future<void> addWarranty(WarrantyItem item) async {
     if (_box == null) return;
     await _box!.put(item.id, item);
+    
+    // Schedule notifications for this warranty
+    await NotificationService().scheduleWarrantyNotification(
+      itemId: item.id,
+      itemName: item.name,
+      expiryDate: item.expiryDate,
+      enabled: item.notificationsEnabled ?? true,
+    );
+
     notifyListeners();
   }
 
@@ -69,4 +79,10 @@ class WarrantyProvider with ChangeNotifier {
              item.storeName.toLowerCase().contains(query.toLowerCase());
     }).toList();
   }
+
+  // Expose notifyListeners for external updates (e.g. from Hive objects)
+  void notify() {
+    notifyListeners();
+  }
 }
+

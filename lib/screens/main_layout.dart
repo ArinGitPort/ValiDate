@@ -30,40 +30,13 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   void _onFabPressed() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.8),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: Colors.white),
-              SizedBox(height: 16),
-              Text("Scanning Receipt...", 
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, decoration: TextDecoration.none, fontSize: 14)
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (!mounted) return;
-      Navigator.pop(context);
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const CaptureScreen()));
-    });
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const CaptureScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
@@ -72,7 +45,7 @@ class _MainLayoutState extends State<MainLayout> {
         onPressed: _onFabPressed,
         child: const Icon(LucideIcons.plus, size: 28),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: const FixedCenterDockedFabLocation(),
       bottomNavigationBar: BottomAppBar(
         color: Colors.white,
         shape: const CircularNotchedRectangle(),
@@ -91,6 +64,7 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
+
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _currentIndex == index;
     final color = isSelected ? AppTheme.primaryBrand : Colors.grey;
@@ -106,6 +80,19 @@ class _MainLayoutState extends State<MainLayout> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class FixedCenterDockedFabLocation extends FloatingActionButtonLocation {
+  const FixedCenterDockedFabLocation();
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final double fabX = (scaffoldGeometry.scaffoldSize.width - scaffoldGeometry.floatingActionButtonSize.width) / 2.0;
+    return Offset(
+      fabX,
+      scaffoldGeometry.contentBottom - (scaffoldGeometry.floatingActionButtonSize.height / 2.0),
     );
   }
 }

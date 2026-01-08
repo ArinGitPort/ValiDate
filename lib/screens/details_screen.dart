@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
@@ -34,6 +35,7 @@ class DetailsScreen extends StatelessWidget {
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
+            centerTitle: true,
             foregroundColor: Colors.white,
             leading: IconButton(
               icon: const Icon(LucideIcons.arrow_left),
@@ -43,14 +45,49 @@ class DetailsScreen extends StatelessWidget {
               ),
             ),
             flexibleSpace: FlexibleSpaceBar(
-              background: Hero(
-                tag: 'img_${item.id}',
-                child: ReceiptThumbnail(imagePath: item.imagePath, size: double.infinity),
+              background: GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      backgroundColor: Colors.black,
+                      child: Stack(
+                        children: [
+                          InteractiveViewer(
+                            minScale: 0.5,
+                            maxScale: 4.0,
+                            child: Center(
+                              child: Image.file(
+                                File(item.imagePath),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: IconButton(
+                              icon: const Icon(LucideIcons.x, color: Colors.white),
+                              onPressed: () => Navigator.pop(context),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.black.withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                child: Hero(
+                  tag: 'img_${item.id}',
+                  child: ReceiptThumbnail(imagePath: item.imagePath, size: double.infinity),
+                ),
               ),
               title: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(item.name, style: const TextStyle(fontSize: 14, color: Colors.white)),
@@ -83,6 +120,39 @@ class DetailsScreen extends StatelessWidget {
                     _buildDetailRow(context, LucideIcons.calendar, "Purchased", DateFormat('yyyy-MM-dd').format(item.purchaseDate)),
                     _buildDetailRow(context, LucideIcons.hash, "Serial", item.serialNumber),
                     _buildDetailRow(context, LucideIcons.clock, "Term", "${item.warrantyPeriodInMonths} Months"),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Notification Toggle
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Notification',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Switch(
+                            value: item.notificationsEnabled ?? true,
+                            onChanged: (value) {
+                              item.notificationsEnabled = value;
+                              item.save();
+                              provider.notify();
+                            },
+                            activeTrackColor: AppTheme.primaryBrand,
+                          ),
+                        ],
+                      ),
+                    ),
                     
                     const SizedBox(height: 48),
                     

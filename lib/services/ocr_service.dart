@@ -59,48 +59,120 @@ class OCRService {
   }
 
   String? _extractItemName(List<String> lines) {
-    // Multiple strategies to find item names
-    
-    // Strategy 1: Look for section headers
-    List<String> itemLines = [];
-    bool foundDescriptionSection = false;
-    int descriptionIndex = -1;
+    // Strategy 1: Look for numbered items (1, 2, 3, etc.) which are common in receipts
+    List<String> numberedItems = [];
     
     for (var i = 0; i < lines.length; i++) {
-      final upper = lines[i].toUpperCase();
+      final line = lines[i];
       
-      // Find description/item section
-      if (upper.contains('DESCRIPTION') || 
-          upper.contains('PARTICULARS') ||
-          upper.contains('ITEM') ||
-          upper == 'BILL TO' ||
-          upper.contains('PRODUCT')) {
-        foundDescriptionSection = true;
-        descriptionIndex = i;
+      // Match lines starting with numbers like "1 ", "2 ", "1|", etc.
+      if (RegExp(r'^[1-4]\s+').hasMatch(line) || RegExp(r'^[1-4]\|').hasMatch(line)) {
+        // Extract the item name (remove the number prefix and any trailing codes/prices)
+        String itemText = line.replaceFirst(RegExp(r'^[1-4]\s+'), '').replaceFirst(RegExp(r'^[1-4]\|'), '');
+        
+        // Remove trailing numbers, codes, and "pcs"
+        itemText = itemText.replaceAll(RegExp(r'\s+\d{4,}\s*$'), ''); // Remove long numbers (codes)
+        itemText = itemText.replaceAll(RegExp(r'\s+\d+\s*pcs\s*$'), ''); // Remove "X pcs"
+        itemText = itemText.replaceAll(RegExp(r'\s+[A-Z0-9]{5,}\s*$'), ''); // Remove codes
+        
+        if (itemText.isNotEmpty && itemText.length > 5) {
+          numberedItems.add(itemText.trim());
+        }
+      }
+    }
+    
+    if (numberedItems.isNotEmpty) {
+      // Return first item or combine first few if they're related
+      return numberedItems.first;
+    }
+    
+    // Strategy 2: Look for description sections
+    List<String> itemLines = [];
+    bool inBillToSection = false;
+    bool inDescriptionSection = false;
+    int sectionStartIndex = -1;
+    
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final upper = line.toUpperCase();
+      
+      // Skip price/tax patterns
+      if (RegExp(r'\d+[,\.]\d+').hasMatch(line) && 
+          (upper.contains('PCS') || upper.contains('TAX') || upper.contains('TOTAL'))) {
         continue;
       }
       
-      // Stop at totals
+      // Skip BILL TO sections entirely
+      if (upper.contains('BILL TO') || upper.contains('SOLD TO')) {
+        inBillToSection = true;
+        inDescriptionSection = false;
+        continue;
+      }
+      
+      // Exit BILL TO section when we hit DESCRIPTION or similar
+      if (inBillToSection && (upper.contains('DESCRIPTION') || 
+          upper.contains('PARTICULARS') ||
+          upper.contains('ITEM') ||
+          upper.contains('PRODUCT'))) {
+        inBillToSection = false;
+        inDescriptionSection = true;
+        sectionStartIndex = i;
+        continue;
+      }
+      
+      // Skip lines while in BILL TO
+      if (inBillToSection) continue;
+      
+      // Find description/item section
+      if (!inDescriptionSection && (upper.contains('DESCRIPTION') || 
+          upper.contains('PARTICULARS') ||
+          upper.contains('ITEM') ||
+          upper.contains('PRODUCT'))) {
+        inDescriptionSection = true;
+        sectionStartIndex = i;
+        continue;
+      }
+      
+      // Stop at totals/amounts
       if (upper.contains('SUBTOTAL') || 
-          upper.contains('TOTAL') && !upper.contains('TOTAL PAYMENT') ||
-          upper.contains('AMOUNT') && upper.contains('DUE') ||
+          (upper.contains('TOTAL') && !upper.contains('TOTAL PAYMENT')) ||
+          upper.contains('AMOUNT') && (upper.contains('DUE') || upper.contains('TOTAL')) ||
           upper.contains('TAX')) {
         break;
       }
       
       // Collect items after description header
-      if (foundDescriptionSection && i > descriptionIndex) {
-        // Skip pure number/amount lines
-        if (RegExp(r'^[\d\s,.\₱\$]+$').hasMatch(lines[i])) continue;
+      if (inDescriptionSection && i > sectionStartIndex) {
+        // Skip pure number/currency lines
+        if (RegExp(r'^[\d\s,.\₱\$Rs]+$').hasMatch(line)) continue;
         
-        // Skip headers like "AMOUNT", "TOTAL"
-        if (lines[i].toUpperCase() == 'AMOUNT' || 
-            lines[i].toUpperCase() == 'TOTAL') continue;
+        // Skip column headers
+        if (upper == 'AMOUNT' || upper == 'TOTAL' || upper == 'QTY' || upper == 'QUANTITY') continue;
         
-        itemLines.add(lines[i]);
+        // Stop at payment/transaction information
+        if (upper.contains('CARD NUMBER') ||
+            upper.contains('CARD TYPE') ||
+            upper.contains('STATUS') ||
+            upper.contains('DATE/TIME') ||
+            upper.contains('PAYMENT') ||
+            upper.contains('TRANSACTION') ||
+            upper.contains('REFERENCE') ||
+            upper.contains('APPROVAL')) {
+          break;
+        }
         
-        // Get first 3-4 item-like lines
-        if (itemLines.length >= 4) break;
+        // Skip very short lines (likely not product names)
+        if (line.length < 5) continue;
+        
+        itemLines.add(line);
+        
+        // For simple items, stop after first meaningful line
+        if (itemLines.length == 1 && !line.toLowerCase().contains('unit of')) {
+          break;
+        }
+        
+        // Collect several item lines for multi-line products (computer builds)
+        if (itemLines.length >= 5) break;
       }
     }
     
@@ -109,26 +181,47 @@ class OCRService {
       return itemLines.join(' - ').replaceAll(RegExp(r'\s+'), ' ').trim();
     }
     
-    // Strategy 2: Look for lines with specific patterns (unit, qty, etc.)
+    // Strategy 3: Look for lines with quantity/unit patterns
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
       final lower = line.toLowerCase();
+      final upper = line.toUpperCase();
       
+      // Skip if we're in a BILL TO or address section
+      if (upper.contains('BILL TO') || 
+          upper.contains('SOLD TO') ||
+          lower.contains('street') ||
+          lower.contains('avenue') ||
+          lower.contains('rizal') ||
+          lower.contains('manila') ||
+          lower.contains('philippines')) {
+        continue;
+      }
+      
+      // Skip tax/price lines
+      if (upper.contains('TAX') || upper.contains('PCS - ')) continue;
+      
+      // Look for product indicators
       if ((lower.contains('unit of') || 
            lower.contains('qty') ||
-           lower.startsWith('1 ') ||
-           lower.startsWith('2 ') ||
-           lower.startsWith('x ')) &&
+           lower.contains('pcs') ||
+           lower.contains('set of') ||
+           RegExp(r'^\d+\s+(unit|pcs|set|pc)').hasMatch(lower)) &&
           line.length > 10) {
-        // Get this line and maybe the next couple
+        // Get this line and the next few lines (for multi-part descriptions)
         List<String> combined = [line];
-        for (var j = i + 1; j < i + 3 && j < lines.length; j++) {
-          if (!RegExp(r'^[\d\s,.\₱\$]+$').hasMatch(lines[j]) && 
-              lines[j].length > 5) {
-            combined.add(lines[j]);
+        for (var j = i + 1; j < i + 5 && j < lines.length; j++) {
+          final nextLine = lines[j];
+          // Stop at amounts/totals
+          if (RegExp(r'^[\d\s,.\₱\$]+$').hasMatch(nextLine)) break;
+          if (nextLine.toUpperCase().contains('SUBTOTAL')) break;
+          if (nextLine.toUpperCase().contains('TOTAL')) break;
+          
+          if (nextLine.length > 5) {
+            combined.add(nextLine);
           }
         }
-        return combined.join(' - ');
+        return combined.join(' - ').replaceAll(RegExp(r'\s+'), ' ').trim();
       }
     }
     

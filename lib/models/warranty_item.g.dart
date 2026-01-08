@@ -26,13 +26,14 @@ class WarrantyItemAdapter extends TypeAdapter<WarrantyItem> {
       category: fields[6] as String,
       imagePath: fields[7] as String,
       isArchived: fields[8] as bool,
+      notificationsEnabled: fields[9] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, WarrantyItem obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +51,9 @@ class WarrantyItemAdapter extends TypeAdapter<WarrantyItem> {
       ..writeByte(7)
       ..write(obj.imagePath)
       ..writeByte(8)
-      ..write(obj.isArchived);
+      ..write(obj.isArchived)
+      ..writeByte(9)
+      ..write(obj.notificationsEnabled);
   }
 
   @override

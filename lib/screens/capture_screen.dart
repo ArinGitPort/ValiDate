@@ -181,8 +181,25 @@ class _CaptureScreenState extends State<CaptureScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(LucideIcons.arrow_left, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Add Warranty'),
+        centerTitle: true,
+        actions: [
+          if (_imagePath != null)
+            IconButton(
+              icon: const Icon(LucideIcons.refresh_cw, size: 20),
+              onPressed: _pickImage,
+              tooltip: 'Retake',
+            ),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
           children: [
             // Header Image
             SizedBox(
@@ -195,6 +212,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     ? Image.file(File(_imagePath!), fit: BoxFit.cover)
                     : Container(color: Colors.black, child: const Icon(Icons.camera_alt, color: Colors.white)),
                   
+                  
                   // Gradient Overlay
                   Positioned(
                     bottom: 0, left: 0, right: 0,
@@ -204,27 +222,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
                         ),
                       ),
-                    ),
-                  ),
-
-                  // Retake Button
-                  Positioned(
-                    top: 40, right: 16,
-                    child: IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.white),
-                      onPressed: _pickImage,
-                      style: IconButton.styleFrom(backgroundColor: Colors.black54),
-                    ),
-                  ),
-                   Positioned(
-                    top: 40, left: 16,
-                    child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                      style: IconButton.styleFrom(backgroundColor: Colors.black54),
                     ),
                   ),
                 ],
@@ -248,7 +248,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     const SizedBox(height: 16),
                     _buildField(_storeCtrl, "Store Name"),
                     const SizedBox(height: 16),
-                    _buildField(_serialCtrl, "Serial Number"),
+                    _buildField(_serialCtrl, "Serial Number", isRequired: false),
                     const SizedBox(height: 16),
                     
                     Row(
@@ -275,7 +275,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildField(_durationCtrl, "Months", isNumber: true)),
+                        Expanded(child: _buildField(_durationCtrl, "Warranty Period (Months)", isNumber: true)),
                       ],
                     ),
                     
@@ -295,11 +295,12 @@ class _CaptureScreenState extends State<CaptureScreen> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
 
-  Widget _buildField(TextEditingController controller, String label, {bool isNumber = false, IconData? icon}) {
+  Widget _buildField(TextEditingController controller, String label, {bool isNumber = false, IconData? icon, bool isRequired = true}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -308,7 +309,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
         TextFormField(
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          validator: (v) => v!.isEmpty ? "Required" : null,
+          validator: isRequired ? (v) => v!.isEmpty ? "Required" : null : null,
           decoration: InputDecoration(
             suffixIcon: icon != null ? Icon(icon, size: 18) : null,
           ),

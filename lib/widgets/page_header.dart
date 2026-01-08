@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import '../theme/app_theme.dart';
+import '../screens/notifications_screen.dart';
 
 class PageHeader extends StatelessWidget {
   final String title;
@@ -52,11 +53,10 @@ class PageHeader extends StatelessWidget {
           // Notification Button with Badge
           InkWell(
             onTap: onNotificationTap ?? () {
-              if (notificationCount > 0) {
-                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("You have $notificationCount items expiring soon!")));
-              } else {
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No new notifications")));
-              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
