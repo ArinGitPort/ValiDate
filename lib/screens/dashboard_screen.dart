@@ -3,10 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import '../providers/warranty_provider.dart';
 import '../widgets/warranty_card.dart';
-import 'capture_screen.dart';
+import '../widgets/page_header.dart';
+import '../theme/app_theme.dart';
 import 'details_screen.dart';
-import 'archive_screen.dart';
-import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,132 +15,113 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = "";
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("ValiDate"),
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.archive),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ArchiveScreen())),
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.settings),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
-          ),
-        ],
-      ),
-      body: Consumer<WarrantyProvider>(
-        builder: (context, provider, child) {
-          if (!provider.isInitialized) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final activeItems = provider.searchActive(_searchQuery);
-          final safeCount = provider.safeCount;
-          final expiringCount = provider.expiringCount;
-          final totalCount = provider.totalActiveCount;
-
-          return Column(
-            children: [
-              // Status Summary
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    _buildStatusCard("Active", totalCount.toString(), Colors.blue),
-                    const SizedBox(width: 8),
-                    _buildStatusCard("Expiring", expiringCount.toString(), Colors.orange),
-                    const SizedBox(width: 8),
-                    _buildStatusCard("Safe", safeCount.toString(), Colors.green),
-                  ],
-                ),
-              ),
-              
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: TextField(
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(LucideIcons.search),
-                    hintText: "Search items...",
-                  ),
-                  onChanged: (val) {
-                    setState(() {
-                      _searchQuery = val;
-                    });
-                  },
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-
-              // List
-              Expanded(
-                child: activeItems.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(LucideIcons.box, size: 64, color: Colors.grey),
-                            const SizedBox(height: 16),
-                            Text("No active warranties found", style: TextStyle(color: Colors.grey[600])),
-                          ],
+      body: SafeArea(
+        child: Consumer<WarrantyProvider>(
+          builder: (context, provider, child) {
+            final expiringCount = provider.expiringCount;
+            final items = provider.searchActive(_searchQuery);
+        
+            return CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      PageHeader(
+                        title: "My Vault",
+                        notificationCount: expiringCount,
+                      ),
+                      
+                      Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 24.0),
+                        child: TextField(
+                          controller: _searchCtrl,
+                          onChanged: (val) => setState(() => _searchQuery = val),
+                          decoration: InputDecoration(
+                            hintText: "Search warranties...",
+                            prefixIcon: const Icon(LucideIcons.search, size: 20, color: Colors.grey),
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppTheme.primaryBrand),
+                            ),
+                          ),
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: activeItems.length,
-                        itemBuilder: (context, index) {
-                          final item = activeItems[index];
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+        
+                if (items.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.box, size: 64, color: Colors.grey.shade300),
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchQuery.isEmpty ? "Your vault is empty" : "No results found",
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final item = items[index];
                           return WarrantyCard(
                             item: item,
                             onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => DetailsScreen(itemId: item.id),
-                                  ),
-                                );
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => DetailsScreen(itemId: item.id)),
+                              );
+                            },
+                            onArchive: (ctx) {
+                              provider.toggleArchive(item.id, true);
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Archived")));
+                            },
+                            onDelete: (ctx) {
+                               provider.deleteWarranty(item.id);
                             },
                           );
                         },
+                        childCount: items.length,
                       ),
-              ),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const CaptureScreen()));
-        },
-        label: const Text("Add Item"),
-        icon: const Icon(LucideIcons.plus),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-      ),
-    );
-  }
-
-  Widget _buildStatusCard(String label, String count, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
-          borderRadius: BorderRadius.circular(8),
-          border: Border(left: BorderSide(color: color, width: 4)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(count, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          ],
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );

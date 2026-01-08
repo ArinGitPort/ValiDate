@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'models/warranty_item.dart';
 import 'providers/warranty_provider.dart';
 import 'theme/app_theme.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/main_layout.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,9 +35,9 @@ class ValiDateApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'ValiDate',
-        theme: AppTheme.darkTheme, // Force dark theme as per instruction
-        themeMode: ThemeMode.dark,
-        home: const DashboardScreen(),
+        theme: AppTheme.lightTheme,
+        themeMode: ThemeMode.light,
+        home: const MainLayout(),
         debugShowCheckedModeBanner: false,
       ),
     );

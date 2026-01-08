@@ -4,7 +4,8 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:intl/intl.dart';
 import '../providers/warranty_provider.dart';
 import '../widgets/receipt_thumbnail.dart';
-import '../widgets/status_badge.dart';
+import '../theme/app_theme.dart';
+
 
 class DetailsScreen extends StatelessWidget {
   final String itemId;
@@ -13,142 +14,151 @@ class DetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to provider to handle deletions (pop if missing)
     final provider = Provider.of<WarrantyProvider>(context);
-    // Find item safely
     final item = provider.allItems.cast<dynamic>().firstWhere((e) => e.id == itemId, orElse: () => null);
 
     if (item == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: Text("Item not found")),
-      );
+      // Handle item deletion gracefully
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (Navigator.canPop(context)) Navigator.pop(context);
+      });
+      return const Scaffold(body: SizedBox()); // Empty while popping
     }
 
     final days = item.daysRemaining;
     
     return Scaffold(
-      appBar: AppBar(
-        title: Text(item.name),
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.trash_2),
-            onPressed: () {
-               // Archive confirmation
-               showDialog(
-                 context: context, 
-                 builder: (ctx) => AlertDialog(
-                   title: const Text("Archive Warranty?"),
-                   content: const Text("This will move the item to the archive folder."),
-                   actions: [
-                     TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-                     TextButton(
-                       onPressed: () {
-                         provider.toggleArchive(item.id, true);
-                         Navigator.pop(ctx); // Close dialog
-                         Navigator.pop(context); // Go back to dashboard
-                       }, 
-                       child: const Text("Archive", style: TextStyle(color: Colors.red)),
-                     ),
-                   ],
-                 )
-               );
-            },
-          )
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header Stats
-            Container(
-              color: Colors.grey[900],
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  Text(
-                    days < 0 ? "${days.abs()}" : "$days",
-                    style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    days < 0 ? "Days Ago" : "Days Left",
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 16),
-                  StatusBadge(
-                    label: days < 0 ? "EXPIRED" : (days <= 30 ? "EXPIRING SOON" : "ACTIVE"),
-                    color: days < 0 ? Colors.red : (days <= 30 ? Colors.orange : Colors.green),
-                  ),
-                ],
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 300,
+            pinned: true,
+            foregroundColor: Colors.white,
+            leading: IconButton(
+              icon: const Icon(LucideIcons.arrow_left),
+              onPressed: () => Navigator.pop(context),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black.withValues(alpha: 0.5),
               ),
             ),
-            
-            // Receipt
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Evidence", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => Dialog(
-                          child: InteractiveViewer(
-                            child: ReceiptThumbnail(imagePath: item.imagePath, size: 400),
+            flexibleSpace: FlexibleSpaceBar(
+              background: Hero(
+                tag: 'img_${item.id}',
+                child: ReceiptThumbnail(imagePath: item.imagePath, size: double.infinity),
+              ),
+              title: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(item.name, style: const TextStyle(fontSize: 14, color: Colors.white)),
+              ),
+            ),
+          ),
+          
+          SliverList(
+            delegate: SliverChildListDelegate([
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Count Down
+                    Text(
+                      days < 0 ? "${days.abs()} DAYS AGO" : "$days DAYS LEFT",
+                      style: Theme.of(context).textTheme.displayLarge,
+                    ),
+                    const SizedBox(height: 8),
+                     Text(
+                      days < 0 ? "Expired on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}" 
+                              : "Expires on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}",
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 14),
+                    ),
+                    
+                    const SizedBox(height: 32),
+                    
+                    _buildDetailRow(context, LucideIcons.store, "Store", item.storeName),
+                    _buildDetailRow(context, LucideIcons.calendar, "Purchased", DateFormat('yyyy-MM-dd').format(item.purchaseDate)),
+                    _buildDetailRow(context, LucideIcons.hash, "Serial", item.serialNumber),
+                    _buildDetailRow(context, LucideIcons.clock, "Term", "${item.warrantyPeriodInMonths} Months"),
+                    
+                    const SizedBox(height: 48),
+                    
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(LucideIcons.pencil),
+                            label: const Text("Edit"),
+                            onPressed: () {
+                              // TODO: Implement Edit
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              foregroundColor: Colors.black,
+                              side: const BorderSide(color: Colors.grey),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
                           ),
                         ),
-                      );
-                    },
-                    child: Hero(
-                      tag: 'receipt_${item.id}',
-                      child: Container(
-                        height: 250,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[900],
-                          borderRadius: BorderRadius.circular(12),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextButton.icon(
+                            icon: const Icon(LucideIcons.trash_2, color: Colors.red),
+                            label: const Text("Delete", style: TextStyle(color: Colors.red)),
+                             onPressed: () {
+                               showDialog(
+                                 context: context, 
+                                 builder: (ctx) => AlertDialog(
+                                   title: const Text("Delete Permanently?"),
+                                   actions: [
+                                     TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
+                                     TextButton(
+                                       onPressed: () {
+                                         provider.deleteWarranty(item.id);
+                                         Navigator.pop(ctx);
+                                       // Navigation handled by build method check or pop here
+                                       }, 
+                                       child: const Text("Delete", style: TextStyle(color: Colors.red)),
+                                     ),
+                                   ],
+                                 )
+                               );
+                            },
+                          ),
                         ),
-                        child: ReceiptThumbnail(imagePath: item.imagePath, size: 250),
-                      ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 40),
+                  ],
+                ),
               ),
-            ),
-
-            // Details
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  _buildDetailRow("Store", item.storeName),
-                  _buildDetailRow("Purchase Date", DateFormat('yyyy-MM-dd').format(item.purchaseDate)),
-                  _buildDetailRow("Serial Number", item.serialNumber),
-                  _buildDetailRow("Warranty Period", "${item.warrantyPeriodInMonths} Months"),
-                  _buildDetailRow("Expiry Date", DateFormat('yyyy-MM-dd').format(item.expiryDate)),
-                ],
-              ),
-            ),
-          ],
-        ),
+            ]),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(BuildContext context, IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Icon(icon, size: 20, color: Colors.grey.shade500),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
         ],
       ),
     );
