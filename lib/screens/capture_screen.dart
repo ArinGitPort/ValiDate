@@ -13,7 +13,9 @@ import '../providers/warranty_provider.dart';
 import '../services/ocr_service.dart';
 
 class CaptureScreen extends StatefulWidget {
-  const CaptureScreen({super.key});
+  final WarrantyItem? item; // Null implies new item
+
+  const CaptureScreen({super.key, this.item});
 
   @override
   State<CaptureScreen> createState() => _CaptureScreenState();
@@ -36,17 +38,26 @@ class _CaptureScreenState extends State<CaptureScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto launch camera on open? Instructions imply workflow starts with camera.
-    // "Presentation: Push as MaterialPageRoute from the Camera logic." 
-    // Wait, implementation plan says: MainLayout FAB -> Loading Overlay -> Capture Screen.
-    // So assume image is picked OR picked immediately here.
-    // Let's launch camera immediately after build to be smooth, or show placeholders.
-    // For better UX, let's trigger pick immediately.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_imagePath == null) {
-        _pickImage();
-      }
-    });
+    if (widget.item != null) {
+      _populateForm(widget.item!);
+    } else {
+      // Auto launch camera for new items
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_imagePath == null) {
+          _pickImage();
+        }
+      });
+    }
+  }
+
+  void _populateForm(WarrantyItem item) {
+    _nameCtrl.text = item.name;
+    _storeCtrl.text = item.storeName;
+    _serialCtrl.text = item.serialNumber;
+    _durationCtrl.text = item.warrantyPeriodInMonths.toString();
+    _imagePath = item.imagePath;
+    _selectedDate = item.purchaseDate;
+    _dateCtrl.text = DateFormat('yyyy-MM-dd').format(item.purchaseDate);
   }
 
   Future<void> _pickImage() async {
