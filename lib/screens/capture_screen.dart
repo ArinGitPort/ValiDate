@@ -169,18 +169,30 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
   void _saveItem() {
     if (_formKey.currentState!.validate() && _imagePath != null && _selectedDate != null) {
+      final isEditing = widget.item != null;
+      
       final newItem = WarrantyItem(
-        id: const Uuid().v4(),
+        id: isEditing ? widget.item!.id : const Uuid().v4(),
         name: _nameCtrl.text,
         storeName: _storeCtrl.text,
         purchaseDate: _selectedDate!,
         warrantyPeriodInMonths: int.tryParse(_durationCtrl.text) ?? 12,
         serialNumber: _serialCtrl.text,
-        category: "Gadgets",
+        // Preserve or default category. In future, add category picker.
+        category: isEditing ? widget.item!.category : "Gadgets", 
         imagePath: _imagePath!,
+        notificationsEnabled: isEditing ? widget.item!.notificationsEnabled : true,
+        isArchived: isEditing ? widget.item!.isArchived : false,
       );
 
-      Provider.of<WarrantyProvider>(context, listen: false).addWarranty(newItem);
+      final provider = Provider.of<WarrantyProvider>(context, listen: false);
+      
+      if (isEditing) {
+        provider.updateWarranty(newItem);
+      } else {
+        provider.addWarranty(newItem);
+      }
+      
       Navigator.pop(context);
     } else if (_imagePath == null) {
        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Receipt image missing")));
@@ -197,7 +209,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
           icon: const Icon(LucideIcons.arrow_left, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Add Warranty'),
+        title: Text(widget.item != null ? 'Edit Warranty' : 'Add Warranty'),
         centerTitle: true,
         actions: [
           if (_imagePath != null)

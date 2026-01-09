@@ -7,6 +7,8 @@ import 'providers/warranty_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_layout.dart';
 
+import 'services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -15,6 +17,9 @@ void main() async {
   // Register Adapters
   Hive.registerAdapter(WarrantyItemAdapter());
   Hive.registerAdapter(ActivityLogAdapter());
+
+  // Initialize Notifications & Timezones
+  await NotificationService().initialize();
 
   runApp(const ValiDateApp());
 }

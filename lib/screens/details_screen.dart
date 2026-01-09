@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../providers/warranty_provider.dart';
 import '../widgets/receipt_thumbnail.dart';
 import '../theme/app_theme.dart';
+import 'capture_screen.dart';
 
 
 class DetailsScreen extends StatelessWidget {
@@ -163,7 +164,10 @@ class DetailsScreen extends StatelessWidget {
                             icon: const Icon(LucideIcons.pencil),
                             label: const Text("Edit"),
                             onPressed: () {
-                              // TODO: Implement Edit
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => CaptureScreen(item: item)),
+                              );
                             },
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),

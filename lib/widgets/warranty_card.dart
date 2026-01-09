@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import '../models/warranty_item.dart';
 import '../theme/app_theme.dart';
-import 'status_badge.dart';
 import 'receipt_thumbnail.dart';
 
 class WarrantyCard extends StatelessWidget {
@@ -25,14 +24,11 @@ class WarrantyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final days = item.daysRemaining;
     Color statusColor = AppTheme.statusSafe;
-    String statusText = "Safe";
 
     if (days < 0) {
       statusColor = AppTheme.statusExpired;
-      statusText = "Expired";
     } else if (days <= 30) {
       statusColor = AppTheme.statusWarning;
-      statusText = "Expiring Soon";
     }
 
     return Padding(

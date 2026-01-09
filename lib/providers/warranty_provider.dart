@@ -24,7 +24,136 @@ class WarrantyProvider with ChangeNotifier {
     // Adapters must be registered before opening boxes (done in main.dart)
     _box = await Hive.openBox<WarrantyItem>(boxName);
     _logBox = await Hive.openBox<ActivityLog>(logBoxName);
+    
+    if (_box!.isEmpty) {
+      await _seedData();
+    }
+    
     notifyListeners();
+  }
+
+  Future<void> _seedData() async {
+    // Seed Warranties
+    final now = DateTime.now();
+    
+    final items = [
+      WarrantyItem(
+        id: const Uuid().v4(),
+        name: "Sony WH-1000XM5 Headphones",
+        storeName: "Amazon",
+        purchaseDate: now.subtract(const Duration(days: 400)), // Expired
+        warrantyPeriodInMonths: 12,
+        serialNumber: "SN-99887766",
+        category: "Electronics",
+        imagePath: "",
+        notificationsEnabled: true,
+      ),
+      WarrantyItem(
+        id: const Uuid().v4(),
+        name: "MacBook Pro M3",
+        storeName: "Apple Store",
+        purchaseDate: now.subtract(const Duration(days: 350)), // Expiring soon (1 year warranty)
+        warrantyPeriodInMonths: 12,
+        serialNumber: "FVFX1234XYZ",
+        category: "Laptops",
+        imagePath: "",
+        notificationsEnabled: true,
+      ),
+      WarrantyItem(
+        id: const Uuid().v4(),
+        name: "Samsung 55\" OLED TV",
+        storeName: "Best Buy",
+        purchaseDate: now.subtract(const Duration(days: 20)), // New, 2 year warranty
+        warrantyPeriodInMonths: 24,
+        serialNumber: "SAM-TV-55-OLED",
+        category: "Home Appliance",
+        imagePath: "",
+        notificationsEnabled: true,
+      ),
+      WarrantyItem(
+        id: const Uuid().v4(),
+        name: "Nespresso Vertuo",
+        storeName: "Nespresso Boutique",
+        purchaseDate: now.subtract(const Duration(days: 5)),
+        warrantyPeriodInMonths: 24,
+        serialNumber: "NES-112233",
+        category: "Kitchen",
+        imagePath: "",
+        notificationsEnabled: true,
+      ),
+      WarrantyItem(
+        id: const Uuid().v4(),
+        name: "Canon Pixma Printer",
+        storeName: "Staples",
+        purchaseDate: now.subtract(const Duration(days: 600)),
+        warrantyPeriodInMonths: 12,
+        serialNumber: "CAN-PRINT-001",
+        category: "Office",
+        imagePath: "",
+        notificationsEnabled: true,
+        isArchived: true, // Archived
+      ),
+    ];
+
+    for (var item in items) {
+      await _box!.put(item.id, item);
+      await NotificationService().scheduleWarrantyNotification(
+        itemId: item.id,
+        itemName: item.name,
+        expiryDate: item.expiryDate,
+        enabled: item.notificationsEnabled ?? true,
+      );
+    }
+
+    // Seed Activity Logs
+    final logs = [
+      ActivityLog(
+        id: const Uuid().v4(),
+        actionType: "added",
+        description: "Added Sony WH-1000XM5 Headphones to vault",
+        timestamp: now.subtract(const Duration(days: 400)),
+        relatedItemId: items[0].id,
+      ),
+       ActivityLog(
+        id: const Uuid().v4(),
+        actionType: "added",
+        description: "Added MacBook Pro M3 to vault",
+        timestamp: now.subtract(const Duration(days: 350)),
+        relatedItemId: items[1].id,
+      ),
+      ActivityLog(
+        id: const Uuid().v4(),
+        actionType: "added",
+        description: "Added Samsung 55\" OLED TV to vault",
+        timestamp: now.subtract(const Duration(days: 20)),
+        relatedItemId: items[2].id,
+      ),
+      ActivityLog(
+        id: const Uuid().v4(),
+        actionType: "added",
+        description: "Added Nespresso Vertuo to vault",
+        timestamp: now.subtract(const Duration(days: 5)),
+        relatedItemId: items[3].id,
+      ),
+      ActivityLog(
+        id: const Uuid().v4(),
+        actionType: "added",
+        description: "Added Canon Pixma Printer to vault",
+        timestamp: now.subtract(const Duration(days: 600)),
+        relatedItemId: items[4].id,
+      ),
+      ActivityLog(
+        id: const Uuid().v4(),
+        actionType: "archived",
+        description: "Moved Canon Pixma Printer to archive",
+        timestamp: now.subtract(const Duration(days: 100)),
+        relatedItemId: items[4].id,
+      ),
+    ];
+
+    for (var log in logs) {
+      await _logBox!.add(log);
+    }
   }
 
   // --- Warranties ---
@@ -135,6 +264,21 @@ class WarrantyProvider with ChangeNotifier {
     );
 
     await _addLog("added", "Added ${item.name} to vault", itemId: item.id);
+    notifyListeners();
+  }
+
+  Future<void> updateWarranty(WarrantyItem item) async {
+    if (_box == null) return;
+    await _box!.put(item.id, item);
+
+    await NotificationService().scheduleWarrantyNotification(
+      itemId: item.id,
+      itemName: item.name,
+      expiryDate: item.expiryDate,
+      enabled: item.notificationsEnabled ?? true,
+    );
+
+    await _addLog("updated", "Updated details for ${item.name}", itemId: item.id);
     notifyListeners();
   }
 

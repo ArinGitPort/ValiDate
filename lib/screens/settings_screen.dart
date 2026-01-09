@@ -206,7 +206,7 @@ class SettingsScreen extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: SwitchListTile(
-        activeColor: Colors.blue,
+        activeTrackColor: Colors.blue,
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: Text(subtitle, style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
         value: value,
