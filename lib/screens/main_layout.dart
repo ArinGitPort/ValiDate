@@ -46,11 +46,14 @@ class _MainLayoutState extends State<MainLayout> {
         onPressed: _onFabPressed,
         child: const Icon(LucideIcons.plus, size: 28),
       ),
-      floatingActionButtonLocation: const FixedCenterDockedFabLocation(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
         color: Colors.white,
+        elevation: 10,
+        shadowColor: Colors.black26,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
+        clipBehavior: Clip.antiAlias,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -68,7 +71,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _currentIndex == index;
-    final color = isSelected ? AppTheme.primaryBrand : Colors.grey;
+    final color = isSelected ? AppTheme.accentOrange : Colors.grey;
     return InkWell(
       onTap: () => _onTabTapped(index),
       borderRadius: BorderRadius.circular(8),

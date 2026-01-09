@@ -28,16 +28,12 @@ class WarrantyCard extends StatelessWidget {
     // Badge Logic
     Color badgeBg = AppTheme.statusSafeBg;
     Color badgeText = AppTheme.statusSafeText;
-    String statusLabel = "$days DAYS LEFT";
+    String statusLabel = days == 1 ? "1 DAY LEFT" : "$days DAYS LEFT";
 
     if (days < 0) {
       badgeBg = AppTheme.statusExpiredBg;
       badgeText = AppTheme.statusExpiredText;
       statusLabel = "EXPIRED";
-    } else if (days <= 30) {
-      badgeBg = AppTheme.statusWarningBg;
-      badgeText = AppTheme.statusWarningText;
-      statusLabel = "EXPIRING SOON";
     }
 
     return Padding(

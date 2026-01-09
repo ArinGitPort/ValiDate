@@ -37,7 +37,7 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.light,
     primaryColor: primaryBrand,
-    scaffoldBackgroundColor: white, // Pure White Background
+    scaffoldBackgroundColor: zinc100, // Zinc-100 Background for contrast
     
     colorScheme: const ColorScheme.light(
       primary: primaryBrand,
@@ -97,15 +97,15 @@ class AppTheme {
     // Input
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: zinc100,
+      fillColor: white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none, // Default no border for search style
+        borderSide: const BorderSide(color: zinc200),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: zinc200),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -145,7 +145,7 @@ class AppTheme {
 
     // Floating Action Button
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: primaryBrand, // Black
+      backgroundColor: accentOrange, // Restored to Orange
       foregroundColor: white,
       elevation: 2,
       shape: CircleBorder(),

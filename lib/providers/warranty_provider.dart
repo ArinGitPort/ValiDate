@@ -166,11 +166,24 @@ class WarrantyProvider with ChangeNotifier {
   List<WarrantyItem> get activeItems {
     final items = allItems.where((item) => !item.isArchived).toList();
     
-    if (_sortOrder == 'purchase_date') {
-      items.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate)); // Newest bought first
-    } else {
-      items.sort((a, b) => a.daysRemaining.compareTo(b.daysRemaining)); // Expiring soonest first
-    }
+      switch (_sortOrder) {
+        case 'purchase_newest':
+          items.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
+          break;
+        case 'purchase_oldest':
+          items.sort((a, b) => a.purchaseDate.compareTo(b.purchaseDate));
+          break;
+        case 'name_az':
+          items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+          break;
+        case 'name_za':
+          items.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+          break;
+        case 'expiring_soon':
+        default:
+          items.sort((a, b) => a.daysRemaining.compareTo(b.daysRemaining));
+          break;
+      }
     
     return items;
   }
