@@ -51,20 +51,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onChanged: (val) => setState(() => _searchQuery = val),
                           decoration: InputDecoration(
                             hintText: "Search warranties...",
-                            prefixIcon: const Icon(LucideIcons.search, size: 20, color: Colors.grey),
-                            fillColor: Colors.white,
+                            hintStyle: const TextStyle(color: AppTheme.zinc500),
+                            prefixIcon: const Icon(LucideIcons.search, size: 20, color: AppTheme.zinc500),
+                            filled: true,
+                            fillColor: AppTheme.zinc100,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade200),
+                              borderSide: BorderSide.none,
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade200),
+                              borderSide: BorderSide.none,
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppTheme.primaryBrand),
+                              borderSide: const BorderSide(color: AppTheme.zinc300, width: 1),
                             ),
                           ),
                         ),

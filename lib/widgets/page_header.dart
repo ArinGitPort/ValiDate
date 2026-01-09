@@ -80,7 +80,7 @@ class PageHeader extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: const BoxDecoration(
-                          color: AppTheme.statusWarning,
+                          color: AppTheme.accentOrange,
                           shape: BoxShape.circle,
                         ),
                         constraints: const BoxConstraints(

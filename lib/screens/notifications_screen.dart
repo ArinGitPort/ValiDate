@@ -133,7 +133,7 @@ class _NotificationCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: AppTheme.statusWarning,
+                          color: AppTheme.accentOrange,
                         ),
                       ),
                       Text(
