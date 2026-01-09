@@ -5,6 +5,7 @@ import 'dashboard_screen.dart';
 import 'archive_screen.dart';
 import 'settings_screen.dart';
 import 'capture_screen.dart';
+import 'log_history_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -19,7 +20,7 @@ class _MainLayoutState extends State<MainLayout> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     const ArchiveScreen(),
-    const SettingsScreen(),
+    const LogHistoryScreen(),
     const SettingsScreen(),
   ];
 
@@ -56,7 +57,7 @@ class _MainLayoutState extends State<MainLayout> {
             _buildNavItem(0, LucideIcons.layout_grid, "Vault"),
             _buildNavItem(1, LucideIcons.archive, "Archive"),
             const SizedBox(width: 48),
-            _buildNavItem(2, LucideIcons.file_text, "Reports"),
+            _buildNavItem(2, LucideIcons.history, "History"),
             _buildNavItem(3, LucideIcons.settings_2, "Settings"),
           ],
         ),
