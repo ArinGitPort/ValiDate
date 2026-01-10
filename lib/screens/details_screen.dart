@@ -127,48 +127,21 @@ class DetailsScreen extends StatelessWidget {
                     
                     const SizedBox(height: 32),
                     
-                    // Notification Toggle
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Notification',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black,
-                            ),
-                          ),
-                          Switch(
-                            value: item.notificationsEnabled ?? true,
-                            onChanged: (value) {
-                              item.notificationsEnabled = value;
-                              item.save();
-                              provider.notify();
-                            },
-                            activeTrackColor: AppTheme.primaryBrand,
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 48),
-
                     // Additional Documents Viewer
                     if (item.additionalDocuments?.isNotEmpty ?? false) ...[
-                      const Text(
-                        "Your Documents",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                      Row(
+                        children: [
+                          const Text(
+                            "Your Documents",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
@@ -228,8 +201,41 @@ class DetailsScreen extends StatelessWidget {
                           },
                         ),
                       ),
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 32),
                     ],
+                    
+                    // Notification Toggle
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Notification',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Switch(
+                            value: item.notificationsEnabled ?? true,
+                            onChanged: (value) {
+                              item.notificationsEnabled = value;
+                              item.save();
+                              provider.notify();
+                            },
+                            activeTrackColor: AppTheme.primaryBrand,
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 48),
 
                     Row(
                       children: [
