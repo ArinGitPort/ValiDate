@@ -52,6 +52,10 @@ class _CaptureScreenState extends State<CaptureScreen> {
     }
   }
 
+  List<String> _additionalImages = [];
+
+  // ... (previous methods)
+
   void _populateForm(WarrantyItem item) {
     _nameCtrl.text = item.name;
     _storeCtrl.text = item.storeName;
@@ -59,13 +63,34 @@ class _CaptureScreenState extends State<CaptureScreen> {
     _durationCtrl.text = item.warrantyPeriodInMonths.toString();
     _imagePath = item.imagePath;
     _selectedDate = item.purchaseDate;
-    _imagePath = item.imagePath;
-    _selectedDate = item.purchaseDate;
     _dateCtrl.text = DateFormat('yyyy-MM-dd').format(item.purchaseDate);
     
     // Validate category exists, else default to 'others'
     final exists = CategoryData.categories.any((c) => c.id == item.category);
     _selectedCategory = exists ? item.category : 'others';
+    _additionalImages = List.from(item.additionalDocuments ?? []);
+  }
+
+  Future<void> _pickAdditionalImage() async {
+    final picker = ImagePicker();
+    // Allow multi-selection if supported, but for now single pick loop is fine or pickMultiImage
+    final pickedFiles = await picker.pickMultiImage();
+    
+    if (pickedFiles.isNotEmpty) {
+       final appDir = await getApplicationDocumentsDirectory();
+       List<String> newPaths = [];
+
+       for (var picked in pickedFiles) {
+          final fileName = path.basename(picked.path);
+          // Append timestamp to avoid collisions if needed, but basename usually fine
+          final savedImage = await File(picked.path).copy('${appDir.path}/${DateTime.now().millisecondsSinceEpoch}_$fileName');
+          newPaths.add(savedImage.path);
+       }
+
+       setState(() {
+         _additionalImages.addAll(newPaths);
+       });
+    }
   }
 
   Future<void> _pickImage() async {
@@ -191,6 +216,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
         imagePath: _imagePath!,
         notificationsEnabled: isEditing ? widget.item!.notificationsEnabled : true,
         isArchived: isEditing ? widget.item!.isArchived : false,
+        additionalDocuments: _additionalImages,
       );
 
       final provider = Provider.of<WarrantyProvider>(context, listen: false);
@@ -335,9 +361,95 @@ class _CaptureScreenState extends State<CaptureScreen> {
                             );
                           }).toList(),
                           onChanged: (val) {
-                            setState(() => _selectedCategory = val ?? 'others');
                           },
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Additional Documents Section
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Your Documents", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54)),
+                            TextButton.icon(
+                              onPressed: _pickAdditionalImage,
+                              icon: const Icon(LucideIcons.plus, size: 16),
+                              label: const Text("Add"),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (_additionalImages.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Center(
+                              child: Text(
+                                "No additional documents",
+                                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                              ),
+                            ),
+                          )
+                        else
+                          SizedBox(
+                            height: 100,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _additionalImages.length,
+                              separatorBuilder: (c, i) => const SizedBox(width: 12),
+                              itemBuilder: (context, index) {
+                                final path = _additionalImages[index];
+                                return Stack(
+                                  children: [
+                                    Container(
+                                      width: 100,
+                                      height: 100,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade200),
+                                        image: DecorationImage(
+                                          image: FileImage(File(path)),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 4,
+                                      right: 4,
+                                      child: InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _additionalImages.removeAt(index);
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.5),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(LucideIcons.x, size: 12, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
                       ],
                     ),
                     

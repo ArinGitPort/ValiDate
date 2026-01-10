@@ -34,6 +34,9 @@ class WarrantyItem extends HiveObject {
   @HiveField(9)
   bool? notificationsEnabled;
 
+  @HiveField(10)
+  List<String>? additionalDocuments;
+
   WarrantyItem({
     required this.id,
     required this.name,
@@ -45,6 +48,7 @@ class WarrantyItem extends HiveObject {
     required this.imagePath,
     this.isArchived = false,
     this.notificationsEnabled,
+    this.additionalDocuments,
   });
 
   DateTime get expiryDate {

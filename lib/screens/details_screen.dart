@@ -159,7 +159,78 @@ class DetailsScreen extends StatelessWidget {
                     ),
                     
                     const SizedBox(height: 48),
-                    
+
+                    // Additional Documents Viewer
+                    if (item.additionalDocuments?.isNotEmpty ?? false) ...[
+                      const Text(
+                        "Your Documents",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 120,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: item.additionalDocuments?.length ?? 0,
+                          separatorBuilder: (c, i) => const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final path = item.additionalDocuments![index];
+                            return GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => Dialog(
+                                    backgroundColor: Colors.black,
+                                    child: Stack(
+                                      children: [
+                                        InteractiveViewer(
+                                          minScale: 0.5,
+                                          maxScale: 4.0,
+                                          child: Center(
+                                            child: Image.file(
+                                              File(path),
+                                              fit: BoxFit.contain,
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 16,
+                                          right: 16,
+                                          child: IconButton(
+                                            icon: const Icon(LucideIcons.x, color: Colors.white),
+                                            onPressed: () => Navigator.pop(context),
+                                            style: IconButton.styleFrom(
+                                              backgroundColor: Colors.black.withValues(alpha: 0.5),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  image: DecorationImage(
+                                    image: FileImage(File(path)),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 48),
+                    ],
+
                     Row(
                       children: [
                         Expanded(
