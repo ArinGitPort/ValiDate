@@ -5,6 +5,7 @@ import '../providers/warranty_provider.dart';
 import '../widgets/warranty_card.dart';
 import '../widgets/page_header.dart';
 import '../theme/app_theme.dart';
+import '../utils/category_data.dart';
 import 'details_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = "";
+  String _selectedCategory = 'all';
 
   @override
   void dispose() {
@@ -31,7 +33,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Consumer<WarrantyProvider>(
           builder: (context, provider, child) {
             final expiringCount = provider.expiringCount;
-            final items = provider.searchActive(_searchQuery);
+            // First search
+            var items = provider.searchActive(_searchQuery);
+            
+            // Then filter by category
+            if (_selectedCategory != 'all') {
+              items = items.where((i) => i.category == _selectedCategory).toList();
+            }
         
             return CustomScrollView(
               slivers: [
@@ -44,38 +52,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       
                       Container(
-                        color: Colors.white,
-                        child: const Divider(height: 1, thickness: 1, color: AppTheme.zinc100),
+                        color: AppTheme.white,
+                        child: const Divider(height: 1, thickness: 1, color: AppTheme.dividerColor),
                       ),
                       Container(
+                        color: AppTheme.white,
                         padding: const EdgeInsets.all(24.0),
-                        child: TextField(
-                          controller: _searchCtrl,
-                          onChanged: (val) => setState(() => _searchQuery = val),
-                          decoration: InputDecoration(
-                            hintText: "Search warranties...",
-                            hintStyle: const TextStyle(color: AppTheme.zinc500),
-                            prefixIcon: const Icon(LucideIcons.search, size: 20, color: AppTheme.zinc500),
-                            suffixIcon: IconButton(
-                              icon: const Icon(LucideIcons.arrow_up_down, size: 20, color: AppTheme.zinc500),
-                              onPressed: () => _showSortOptions(context),
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: _searchCtrl,
+                              onChanged: (val) => setState(() => _searchQuery = val),
+                              decoration: InputDecoration(
+                                hintText: "Search warranties...",
+                                hintStyle: const TextStyle(color: AppTheme.secondaryText),
+                                prefixIcon: const Icon(LucideIcons.search, size: 20, color: AppTheme.secondaryText),
+                                suffixIcon: IconButton(
+                                  icon: const Icon(LucideIcons.arrow_up_down, size: 20, color: AppTheme.secondaryText),
+                                  onPressed: () => _showSortOptions(context),
+                                ),
+                                filled: true,
+                                fillColor: AppTheme.inputFill,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppTheme.dividerColor),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppTheme.dividerColor),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppTheme.primaryBrand, width: 1.5),
+                                ),
+                              ),
                             ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppTheme.zinc200),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppTheme.zinc200),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppTheme.zinc300, width: 1),
-                            ),
-                          ),
+                            const SizedBox(height: 16),
+                            _buildCategoryFilter(),
+                          ],
                         ),
                       ),
                     ],
@@ -89,11 +104,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(LucideIcons.box, size: 64, color: Colors.grey.shade300),
+                          Icon(LucideIcons.box, size: 64, color: AppTheme.dividerColor),
                           const SizedBox(height: 16),
                           Text(
-                            _searchQuery.isEmpty ? "Your vault is empty" : "No results found",
-                            style: TextStyle(color: Colors.grey.shade500),
+                            _searchQuery.isEmpty && _selectedCategory == 'all' 
+                                ? "Your vault is empty" 
+                                : "No results found",
+                            style: const TextStyle(color: AppTheme.secondaryText),
                           ),
                         ],
                       ),
@@ -140,6 +157,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildCategoryFilter() {
+    // Add "All" option to categories
+    final allCategory = CategoryItem(id: 'all', label: 'All', icon: LucideIcons.layout_grid, color: AppTheme.primaryBrand);
+    final categories = [allCategory, ...CategoryData.categories];
+
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        separatorBuilder: (c, i) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          final isSelected = _selectedCategory == cat.id;
+          
+          return GestureDetector(
+            onTap: () {
+              setState(() => _selectedCategory = cat.id);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? AppTheme.primaryBrand : AppTheme.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected ? AppTheme.primaryBrand : AppTheme.dividerColor,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    cat.icon, 
+                    size: 16, 
+                    color: isSelected ? AppTheme.white : AppTheme.secondaryText
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    cat.label,
+                    style: TextStyle(
+                      color: isSelected ? AppTheme.white : AppTheme.secondaryText,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _showSortOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -158,7 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(
                     "Sort By",
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppTheme.primaryDark),
                   ),
                   const SizedBox(height: 16),
                   _buildSortOption(context, provider, "Expiring Soonest", "expiring_soon"),
@@ -186,7 +257,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.zinc100 : Colors.transparent,
+          color: isSelected ? AppTheme.inputFill : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -196,12 +267,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label,
                 style: TextStyle(
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? AppTheme.zinc900 : AppTheme.zinc500,
+                  color: isSelected ? AppTheme.primaryDark : AppTheme.secondaryText,
                 ),
               ),
             ),
             if (isSelected)
-              const Icon(LucideIcons.check, size: 20, color: AppTheme.accentOrange),
+              const Icon(LucideIcons.check, size: 20, color: AppTheme.primaryBrand),
           ],
         ),
       ),

@@ -38,12 +38,12 @@ class DetailsScreen extends StatelessWidget {
             expandedHeight: 300,
             pinned: true,
             centerTitle: true,
-            foregroundColor: Colors.white,
+            foregroundColor: AppTheme.white,
             leading: IconButton(
               icon: const Icon(LucideIcons.arrow_left),
               onPressed: () => Navigator.pop(context),
               style: IconButton.styleFrom(
-                backgroundColor: Colors.black.withValues(alpha: 0.5),
+                backgroundColor: AppTheme.primaryDark.withValues(alpha: 0.5),
               ),
             ),
             flexibleSpace: FlexibleSpaceBar(
@@ -69,10 +69,10 @@ class DetailsScreen extends StatelessWidget {
                             top: 16,
                             right: 16,
                             child: IconButton(
-                              icon: const Icon(LucideIcons.x, color: Colors.white),
+                              icon: const Icon(LucideIcons.x, color: AppTheme.white),
                               onPressed: () => Navigator.pop(context),
                               style: IconButton.styleFrom(
-                                backgroundColor: Colors.black.withValues(alpha: 0.5),
+                                backgroundColor: AppTheme.primaryDark.withValues(alpha: 0.5),
                               ),
                             ),
                           ),
@@ -89,10 +89,11 @@ class DetailsScreen extends StatelessWidget {
               title: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
+
+                  color: AppTheme.primaryDark.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(item.name, style: const TextStyle(fontSize: 14, color: Colors.white)),
+                child: Text(item.name, style: const TextStyle(fontSize: 14, color: AppTheme.white)),
               ),
             ),
           ),
@@ -136,11 +137,11 @@ class DetailsScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: AppTheme.primaryDark,
                             ),
                           ),
                           const SizedBox(width: 16),
-                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                          Expanded(child: Divider(color: AppTheme.dividerColor)),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -174,10 +175,10 @@ class DetailsScreen extends StatelessWidget {
                                           top: 16,
                                           right: 16,
                                           child: IconButton(
-                                            icon: const Icon(LucideIcons.x, color: Colors.white),
+                                            icon: const Icon(LucideIcons.x, color: AppTheme.white),
                                             onPressed: () => Navigator.pop(context),
                                             style: IconButton.styleFrom(
-                                              backgroundColor: Colors.black.withValues(alpha: 0.5),
+                                              backgroundColor: AppTheme.primaryDark.withValues(alpha: 0.5),
                                             ),
                                           ),
                                         ),
@@ -190,7 +191,7 @@ class DetailsScreen extends StatelessWidget {
                                 width: 120,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border: Border.all(color: AppTheme.dividerColor),
                                   image: DecorationImage(
                                     image: FileImage(File(path)),
                                     fit: BoxFit.cover,
@@ -208,7 +209,7 @@ class DetailsScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
+                        color: AppTheme.inputFill,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -219,7 +220,7 @@ class DetailsScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
-                              color: Colors.black,
+                              color: AppTheme.primaryDark,
                             ),
                           ),
                           Switch(
@@ -251,8 +252,8 @@ class DetailsScreen extends StatelessWidget {
                             },
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              foregroundColor: Colors.black,
-                              side: const BorderSide(color: Colors.grey),
+                              foregroundColor: AppTheme.primaryDark,
+                              side: const BorderSide(color: AppTheme.dividerColor),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
@@ -260,22 +261,22 @@ class DetailsScreen extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: TextButton.icon(
-                            icon: const Icon(LucideIcons.trash_2, color: Colors.red),
-                            label: const Text("Delete", style: TextStyle(color: Colors.red)),
+                            icon: const Icon(LucideIcons.trash_2, color: AppTheme.statusExpiredText),
+                            label: const Text("Delete", style: TextStyle(color: AppTheme.statusExpiredText)),
                              onPressed: () {
                                showDialog(
                                  context: context, 
                                  builder: (ctx) => AlertDialog(
                                    title: const Text("Delete Permanently?"),
                                    actions: [
-                                     TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
+                                     TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel", style: TextStyle(color: AppTheme.secondaryText))),
                                      TextButton(
                                        onPressed: () {
                                          provider.deleteWarranty(item.id);
                                          Navigator.pop(ctx);
                                        // Navigation handled by build method check or pop here
                                        }, 
-                                       child: const Text("Delete", style: TextStyle(color: Colors.red)),
+                                       child: const Text("Delete", style: TextStyle(color: AppTheme.statusExpiredText)),
                                      ),
                                    ],
                                  )
@@ -301,13 +302,13 @@ class DetailsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.grey.shade500),
+          Icon(icon, size: 20, color: AppTheme.secondaryText),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                Text(label.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.secondaryText, letterSpacing: 1.2)),
                 const SizedBox(height: 4),
                 Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ],

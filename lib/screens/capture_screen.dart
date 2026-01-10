@@ -12,6 +12,7 @@ import '../models/warranty_item.dart';
 import '../providers/warranty_provider.dart';
 import '../services/ocr_service.dart';
 import '../utils/category_data.dart';
+import '../theme/app_theme.dart';
 
 class CaptureScreen extends StatefulWidget {
   final WarrantyItem? item; // Null implies new item
@@ -267,7 +268,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 children: [
                   _imagePath != null 
                     ? Image.file(File(_imagePath!), fit: BoxFit.cover)
-                    : Container(color: Colors.black, child: const Icon(Icons.camera_alt, color: Colors.white)),
+                    : Container(color: AppTheme.primaryDark, child: const Icon(Icons.camera_alt, color: AppTheme.white)),
                   
                   
                   // Gradient Overlay
@@ -279,7 +280,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                          colors: [Colors.transparent, AppTheme.primaryDark.withValues(alpha: 0.7)],
                         ),
                       ),
                     ),
@@ -341,7 +342,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54)),
+                        const Text("Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.secondaryText)),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
                           value: _selectedCategory,
@@ -374,7 +375,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Your Documents", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54)),
+                            const Text("Your Documents", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.secondaryText)),
                             TextButton.icon(
                               onPressed: _pickAdditionalImage,
                               icon: const Icon(LucideIcons.plus, size: 16),
@@ -392,14 +393,14 @@ class _CaptureScreenState extends State<CaptureScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 24),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
+                              color: AppTheme.inputFill,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
+                              border: Border.all(color: AppTheme.dividerColor),
                             ),
                             child: Center(
                               child: Text(
                                 "No additional documents",
-                                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                                style: TextStyle(color: AppTheme.secondaryText, fontSize: 12),
                               ),
                             ),
                           )
@@ -441,7 +442,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                                             color: Colors.black.withValues(alpha: 0.5),
                                             shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(LucideIcons.x, size: 12, color: Colors.white),
+                                          child: const Icon(LucideIcons.x, size: 12, color: AppTheme.white),
                                         ),
                                       ),
                                     ),
@@ -478,7 +479,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54)),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.secondaryText)),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,

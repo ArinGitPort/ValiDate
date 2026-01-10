@@ -56,7 +56,7 @@ class WarrantyCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppTheme.zinc200, width: 1),
+        side: const BorderSide(color: AppTheme.dividerColor, width: 1),
       ),
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -124,17 +124,17 @@ class WarrantyCard extends StatelessWidget {
                     height: 60,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.zinc200),
-                      color: AppTheme.zinc50,
+                      border: Border.all(color: AppTheme.dividerColor),
+                      color: AppTheme.inputFill,
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: item.imagePath.isNotEmpty
                         ? Image.file(
                             File(item.imagePath),
                             fit: BoxFit.cover,
-                            errorBuilder: (c, e, s) => const Icon(LucideIcons.image, color: AppTheme.zinc400),
+                            errorBuilder: (c, e, s) => const Icon(LucideIcons.image, color: AppTheme.secondaryText),
                           )
-                        : const Icon(LucideIcons.receipt, color: AppTheme.zinc400),
+                        : const Icon(LucideIcons.receipt, color: AppTheme.secondaryText),
                   ),
                   
                   const SizedBox(width: 16),
@@ -149,7 +149,7 @@ class WarrantyCard extends StatelessWidget {
                           style: GoogleFonts.manrope(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.zinc900,
+                            color: AppTheme.primaryDark,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -159,7 +159,7 @@ class WarrantyCard extends StatelessWidget {
                           item.storeName,
                           style: GoogleFonts.manrope(
                             fontSize: 13,
-                            color: AppTheme.zinc500,
+                            color: AppTheme.secondaryText,
                           ),
                         ),
                         if (item.serialNumber.isNotEmpty) ...[
@@ -168,7 +168,7 @@ class WarrantyCard extends StatelessWidget {
                             "SN: ${item.serialNumber}",
                             style: GoogleFonts.manrope(
                               fontSize: 12,
-                              color: AppTheme.zinc400,
+                              color: AppTheme.secondaryText,
                             ),
                           ),
                         ],
@@ -181,7 +181,7 @@ class WarrantyCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                        PopupMenuButton<String>(
-                        icon: const Icon(LucideIcons.ellipsis_vertical, size: 20, color: AppTheme.zinc400),
+                        icon: const Icon(LucideIcons.ellipsis_vertical, size: 20, color: AppTheme.secondaryText),
                         onSelected: (value) {
                           if (value == 'archive') {
                             onArchive?.call(context);
@@ -194,7 +194,7 @@ class WarrantyCard extends StatelessWidget {
                             value: 'archive',
                             child: Row(
                               children: [
-                                const Icon(LucideIcons.archive, size: 18, color: AppTheme.zinc700),
+                                const Icon(LucideIcons.archive, size: 18, color: AppTheme.primaryDark),
                                 const SizedBox(width: 8),
                                 Text(item.isArchived ? "Unarchive" : "Archive"),
                               ],
@@ -204,9 +204,9 @@ class WarrantyCard extends StatelessWidget {
                             value: 'delete',
                             child: Row(
                               children: [
-                                Icon(LucideIcons.trash_2, size: 18, color: Colors.red),
+                                Icon(LucideIcons.trash_2, size: 18, color: AppTheme.statusExpiredText),
                                 SizedBox(width: 8),
-                                Text("Delete", style: TextStyle(color: Colors.red)),
+                                Text("Delete", style: TextStyle(color: AppTheme.statusExpiredText)),
                               ],
                             ),
                           ),

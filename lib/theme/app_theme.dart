@@ -2,29 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Brand & Zinc Colors
+  // Strict Palette
+  static const Color primaryBrand = Color(0xFF0F766E); // Teal
+  static const Color primaryDark = Color(0xFF0F172A); // Dark Slate (Headings)
+  static const Color secondaryText = Color(0xFF64748B); // Medium Slate (Subtitles)
+  static const Color dividerColor = Color(0xFFE2E8F0); // Light Slate
+  static const Color inputFill = Color(0xFFF8FAFC); // Very light grey
+  
+  // Legacy Compatibility (Mapped to Strict Palette)
+  static const Color black = primaryDark;
+  static const Color zinc50 = inputFill;
+  static const Color zinc100 = inputFill;
+  static const Color zinc200 = dividerColor;
+  static const Color zinc300 = dividerColor;
+  static const Color zinc400 = secondaryText;
+  static const Color zinc500 = secondaryText;
+  static const Color zinc600 = secondaryText;
+  static const Color zinc700 = primaryDark;
+  static const Color zinc800 = primaryDark;
+  static const Color zinc900 = primaryDark;
+  static const Color accentOrange = primaryBrand; // Enforce Teal everywhere
+  
   static const Color white = Color(0xFFFFFFFF);
-  static const Color black = Color(0xFF000000);
-  
-  static const Color zinc50 = Color(0xFFFAFAFA);
-  static const Color zinc100 = Color(0xFFF4F4F5);
-  static const Color zinc200 = Color(0xFFE4E4E7);
-  static const Color zinc300 = Color(0xFFD4D4D8);
-  static const Color zinc400 = Color(0xFFA1A1AA);
-  static const Color zinc500 = Color(0xFF71717A); // Secondary Text
-  static const Color zinc600 = Color(0xFF52525B);
-  static const Color zinc700 = Color(0xFF3F3F46);
-  static const Color zinc800 = Color(0xFF27272A);
-  static const Color zinc900 = Color(0xFF18181B); // Primary Text
-
-  // Accent & Status
-  static const Color accentOrange = Color(0xFFEA580C); // Orange-600
-  static const Color primaryBrand = black; // FAB & Buttons Anchor
-  static const Color textMain = zinc900;
-  static const Color textSub = zinc500;
-  
-  // Status Colors (ShadCN Tints)
-  static const Color statusSafeBg = Color(0xFFF0FDF4); // Green-50
   static const Color statusSafeText = Color(0xFF15803D); // Green-700
   
   static const Color statusWarningBg = Color(0xFFFFF7ED); // Orange-50
