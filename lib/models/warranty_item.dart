@@ -68,4 +68,6 @@ class WarrantyItem extends HiveObject {
     final expiry = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
     return expiry.difference(today).inDays;
   }
+
+  bool get isExpired => daysRemaining <= 0;
 }

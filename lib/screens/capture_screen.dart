@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import '../models/warranty_item.dart';
 import '../providers/warranty_provider.dart';
 import '../services/ocr_service.dart';
+import '../utils/category_data.dart';
 
 class CaptureScreen extends StatefulWidget {
   final WarrantyItem? item; // Null implies new item
@@ -31,6 +32,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
   String? _imagePath;
   DateTime? _selectedDate;
+  String _selectedCategory = "others";
   bool _isLoading = false;
 
   final OCRService _ocrService = OCRService();
@@ -57,7 +59,13 @@ class _CaptureScreenState extends State<CaptureScreen> {
     _durationCtrl.text = item.warrantyPeriodInMonths.toString();
     _imagePath = item.imagePath;
     _selectedDate = item.purchaseDate;
+    _imagePath = item.imagePath;
+    _selectedDate = item.purchaseDate;
     _dateCtrl.text = DateFormat('yyyy-MM-dd').format(item.purchaseDate);
+    
+    // Validate category exists, else default to 'others'
+    final exists = CategoryData.categories.any((c) => c.id == item.category);
+    _selectedCategory = exists ? item.category : 'others';
   }
 
   Future<void> _pickImage() async {
@@ -179,7 +187,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
         warrantyPeriodInMonths: int.tryParse(_durationCtrl.text) ?? 12,
         serialNumber: _serialCtrl.text,
         // Preserve or default category. In future, add category picker.
-        category: isEditing ? widget.item!.category : "Gadgets", 
+        category: _selectedCategory, 
         imagePath: _imagePath!,
         notificationsEnabled: isEditing ? widget.item!.notificationsEnabled : true,
         isArchived: isEditing ? widget.item!.isArchived : false,
@@ -299,6 +307,37 @@ class _CaptureScreenState extends State<CaptureScreen> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(child: _buildField(_durationCtrl, "Warranty Period (Months)", isNumber: true)),
+                        ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Category Dropdown
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54)),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: _selectedCategory,
+                          decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          ),
+                          items: CategoryData.categories.map((c) {
+                            return DropdownMenuItem(
+                              value: c.id,
+                              child: Row(
+                                children: [
+                                  Icon(c.icon, size: 18, color: c.color),
+                                  const SizedBox(width: 12),
+                                  Text(c.label),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            setState(() => _selectedCategory = val ?? 'others');
+                          },
+                        ),
                       ],
                     ),
                     

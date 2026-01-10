@@ -166,7 +166,7 @@ class LogHistoryScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  DateFormat('h:mm a').format(log.timestamp),
+                  DateFormat('MMM d, y • h:mm a').format(log.timestamp),
                   style: TextStyle(
                     color: Colors.grey.shade500,
                     fontSize: 13,

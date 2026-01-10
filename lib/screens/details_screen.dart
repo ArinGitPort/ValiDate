@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../providers/warranty_provider.dart';
 import '../widgets/receipt_thumbnail.dart';
 import '../theme/app_theme.dart';
+import '../utils/category_data.dart';
 import 'capture_screen.dart';
 
 
@@ -115,8 +116,10 @@ class DetailsScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 14),
                     ),
                     
+
                     const SizedBox(height: 32),
                     
+                    _buildDetailRow(context, CategoryData.getCategory(item.category).icon, "Category", CategoryData.getCategory(item.category).label),
                     _buildDetailRow(context, LucideIcons.store, "Store", item.storeName),
                     _buildDetailRow(context, LucideIcons.calendar, "Purchased", DateFormat('yyyy-MM-dd').format(item.purchaseDate)),
                     _buildDetailRow(context, LucideIcons.hash, "Serial", item.serialNumber),
