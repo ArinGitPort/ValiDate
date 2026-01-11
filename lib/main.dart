@@ -5,7 +5,7 @@ import 'models/warranty_item.dart';
 import 'models/activity_log.dart';
 import 'providers/warranty_provider.dart';
 import 'theme/app_theme.dart';
-import 'screens/main_layout.dart';
+import 'screens/splash_screen.dart';
 
 import 'services/notification_service.dart';
 
@@ -40,7 +40,7 @@ class ValiDateApp extends StatelessWidget {
         title: 'ValiDate',
         theme: AppTheme.lightTheme,
         themeMode: ThemeMode.light,
-        home: const MainLayout(),
+        home: const SplashScreen(),
         debugShowCheckedModeBanner: false,
       ),
     );
