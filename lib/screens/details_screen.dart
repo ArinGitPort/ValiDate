@@ -32,74 +32,106 @@ class DetailsScreen extends StatelessWidget {
     final days = item.daysRemaining;
     
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            centerTitle: true,
-            foregroundColor: AppTheme.white,
-            leading: IconButton(
-              icon: const Icon(LucideIcons.arrow_left),
-              onPressed: () => Navigator.pop(context),
-              style: IconButton.styleFrom(
-                backgroundColor: AppTheme.primaryDark.withValues(alpha: 0.5),
-              ),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: GestureDetector(
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => Dialog(
-                      backgroundColor: Colors.black,
-                      child: Stack(
-                        children: [
-                          InteractiveViewer(
-                            minScale: 0.5,
-                            maxScale: 4.0,
-                            child: Center(
-                              child: Image.file(
-                                File(item.imagePath),
-                                fit: BoxFit.contain,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(LucideIcons.arrow_left, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Warranty Details'),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+               // Header Image (Matching CaptureScreen style)
+              SizedBox(
+                height: 250,
+                width: double.infinity,
+                child: GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        backgroundColor: Colors.black,
+                        child: Stack(
+                          children: [
+                            InteractiveViewer(
+                              minScale: 0.5,
+                              maxScale: 4.0,
+                              child: Center(
+                                child: Image.file(
+                                  File(item.imagePath),
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                             ),
-                          ),
-                          Positioned(
-                            top: 16,
-                            right: 16,
-                            child: IconButton(
-                              icon: const Icon(LucideIcons.x, color: AppTheme.white),
-                              onPressed: () => Navigator.pop(context),
-                              style: IconButton.styleFrom(
-                                backgroundColor: AppTheme.primaryDark.withValues(alpha: 0.5),
+                            Positioned(
+                              top: 16,
+                              right: 16,
+                              child: IconButton(
+                                icon: const Icon(LucideIcons.x, color: AppTheme.white),
+                                onPressed: () => Navigator.pop(context),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: AppTheme.primaryDark.withValues(alpha: 0.5),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-                child: Hero(
-                  tag: 'img_${item.id}',
-                  child: ReceiptThumbnail(imagePath: item.imagePath, size: double.infinity),
+                    );
+                  },
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Hero(
+                        tag: 'img_${item.id}',
+                        child: Image.file(
+                          File(item.imagePath), 
+                          fit: BoxFit.cover,
+                          errorBuilder: (c,e,s) => Container(
+                            color: AppTheme.zinc100, 
+                            child: const Icon(LucideIcons.image, size: 48, color: AppTheme.zinc400)
+                          ),
+                        ),
+                      ),
+                      
+                      // Gradient Overlay
+                      Positioned(
+                        bottom: 0, left: 0, right: 0,
+                        child: Container(
+                          height: 80,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, AppTheme.primaryDark.withValues(alpha: 0.7)],
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      // Item Name on Overlay
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        right: 16,
+                        child: Text(
+                          item.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              title: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
 
-                  color: AppTheme.primaryDark.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(item.name, style: const TextStyle(fontSize: 14, color: AppTheme.white)),
-              ),
-            ),
-          ),
-          
-          SliverList(
-            delegate: SliverChildListDelegate([
               Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
@@ -290,9 +322,9 @@ class DetailsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-            ]),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
