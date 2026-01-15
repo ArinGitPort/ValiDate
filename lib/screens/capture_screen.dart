@@ -334,80 +334,75 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     _buildField(_serialCtrl, "Serial Number", isRequired: false),
                     const SizedBox(height: 16),
                     
-                      Row(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                final d = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (d != null) {
-                                  setState(() {
-                                    _selectedDate = d;
-                                    _dateCtrl.text = DateFormat('yyyy-MM-dd').format(d);
-                                  });
-                                }
-                              },
-                              child: AbsorbPointer(
-                                child: _buildField(_dateCtrl, "Purchase Date", icon: LucideIcons.calendar),
-                              ),
+                          GestureDetector(
+                            onTap: () async {
+                              final d = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime.now(),
+                              );
+                              if (d != null) {
+                                setState(() {
+                                  _selectedDate = d;
+                                  _dateCtrl.text = DateFormat('yyyy-MM-dd').format(d);
+                                });
+                              }
+                            },
+                            child: AbsorbPointer(
+                              child: _buildField(_dateCtrl, "Purchase Date", icon: LucideIcons.calendar),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(height: 16),
                           
                           // Composite Warranty Input
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text("Warranty Period", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.secondaryText)),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: TextFormField(
-                                        controller: _periodValueCtrl,
-                                        enabled: !_isLifetime,
-                                        keyboardType: TextInputType.number,
-                                        decoration: InputDecoration(
-                                          hintText: "0",
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                          filled: true,
-                                          fillColor: _isLifetime ? Colors.grey.shade100 : AppTheme.inputFill,
-                                        ),
-                                        validator: (v) {
-                                          if (_isLifetime) return null;
-                                          if (v == null || v.isEmpty) return "Required";
-                                          return null;
-                                        },
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("Warranty Period", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.secondaryText)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: TextFormField(
+                                      controller: _periodValueCtrl,
+                                      enabled: !_isLifetime,
+                                      keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(
+                                        hintText: "0",
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                        filled: true,
+                                        fillColor: _isLifetime ? Colors.grey.shade100 : AppTheme.inputFill,
+                                      ),
+                                      validator: (v) {
+                                        if (_isLifetime) return null;
+                                        if (v == null || v.isEmpty) return "Required";
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    flex: 2,
+                                    child: DropdownButtonFormField<String>(
+                                      key: ValueKey(_selectedPeriodUnit),
+                                      initialValue: _selectedPeriodUnit,
+                                      onChanged: _isLifetime ? null : (v) => setState(() => _selectedPeriodUnit = v ?? "Months"),
+                                      items: ["Days", "Weeks", "Months", "Years"].map((u) => DropdownMenuItem(value: u, child: Text(u, overflow: TextOverflow.ellipsis))).toList(),
+                                      decoration: InputDecoration(
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                        filled: true,
+                                        fillColor: _isLifetime ? Colors.grey.shade100 : AppTheme.inputFill,
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 2,
-                                      child: DropdownButtonFormField<String>(
-                                        key: ValueKey(_selectedPeriodUnit),
-                                        initialValue: _selectedPeriodUnit,
-                                        onChanged: _isLifetime ? null : (v) => setState(() => _selectedPeriodUnit = v ?? "Months"),
-                                        items: ["Days", "Weeks", "Months", "Years"].map((u) => DropdownMenuItem(value: u, child: Text(u, overflow: TextOverflow.ellipsis))).toList(),
-                                        decoration: InputDecoration(
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                                          filled: true,
-                                          fillColor: _isLifetime ? Colors.grey.shade100 : AppTheme.inputFill,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ],
                       ),
