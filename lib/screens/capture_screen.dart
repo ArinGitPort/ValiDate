@@ -29,7 +29,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
   final _storeCtrl = TextEditingController();
   final _serialCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
-  final _durationCtrl = TextEditingController();
+  
+  // New State for Warranty Period
+  final _periodValueCtrl = TextEditingController();
+  String _selectedPeriodUnit = "Months"; // "Days", "Weeks", "Months", "Years"
+  bool _isLifetime = false;
 
   String? _imagePath;
   DateTime? _selectedDate;
@@ -57,11 +61,22 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
   // ... (previous methods)
 
+  int get _calculatedMonths {
+    if (_isLifetime) return 9999;
+    
+    final val = int.tryParse(_periodValueCtrl.text) ?? 0;
+    switch (_selectedPeriodUnit) {
+      case 'Years': return val * 12;
+      case 'Weeks': return (val / 4.3).round();
+      case 'Days': return (val / 30).round();
+      default: return val; // Months
+    }
+  }
+
   void _populateForm(WarrantyItem item) {
     _nameCtrl.text = item.name;
     _storeCtrl.text = item.storeName;
     _serialCtrl.text = item.serialNumber;
-    _durationCtrl.text = item.warrantyPeriodInMonths.toString();
     _imagePath = item.imagePath;
     _selectedDate = item.purchaseDate;
     _dateCtrl.text = DateFormat('yyyy-MM-dd').format(item.purchaseDate);
@@ -70,6 +85,16 @@ class _CaptureScreenState extends State<CaptureScreen> {
     final exists = CategoryData.categories.any((c) => c.id == item.category);
     _selectedCategory = exists ? item.category : 'others';
     _additionalImages = List.from(item.additionalDocuments ?? []);
+
+    // Populate Warranty Period
+    if (item.warrantyPeriodInMonths > 1000) {
+      _isLifetime = true;
+      _periodValueCtrl.text = "";
+    } else {
+      _isLifetime = false;
+      _periodValueCtrl.text = item.warrantyPeriodInMonths.toString();
+      _selectedPeriodUnit = "Months"; // Default to months for existing data
+    }
   }
 
   Future<void> _pickAdditionalImage() async {
@@ -210,7 +235,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
         name: _nameCtrl.text,
         storeName: _storeCtrl.text,
         purchaseDate: _selectedDate!,
-        warrantyPeriodInMonths: int.tryParse(_durationCtrl.text) ?? 12,
+        warrantyPeriodInMonths: _calculatedMonths,
         serialNumber: _serialCtrl.text,
         // Preserve or default category. In future, add category picker.
         category: _selectedCategory, 
@@ -309,33 +334,100 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     _buildField(_serialCtrl, "Serial Number", isRequired: false),
                     const SizedBox(height: 16),
                     
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () async {
-                              final d = await showDatePicker(
-                                context: context,
-                                initialDate: DateTime.now(),
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime.now(),
-                              );
-                              if (d != null) {
-                                setState(() {
-                                  _selectedDate = d;
-                                  _dateCtrl.text = DateFormat('yyyy-MM-dd').format(d);
-                                });
-                              }
-                            },
-                            child: AbsorbPointer(
-                              child: _buildField(_dateCtrl, "Purchase Date", icon: LucideIcons.calendar),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                final d = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (d != null) {
+                                  setState(() {
+                                    _selectedDate = d;
+                                    _dateCtrl.text = DateFormat('yyyy-MM-dd').format(d);
+                                  });
+                                }
+                              },
+                              child: AbsorbPointer(
+                                child: _buildField(_dateCtrl, "Purchase Date", icon: LucideIcons.calendar),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildField(_durationCtrl, "Warranty Period (Months)", isNumber: true)),
+                          const SizedBox(width: 16),
+                          
+                          // Composite Warranty Input
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("Warranty Period", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.secondaryText)),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: TextFormField(
+                                        controller: _periodValueCtrl,
+                                        enabled: !_isLifetime,
+                                        keyboardType: TextInputType.number,
+                                        decoration: InputDecoration(
+                                          hintText: "0",
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                          filled: true,
+                                          fillColor: _isLifetime ? Colors.grey.shade100 : AppTheme.inputFill,
+                                        ),
+                                        validator: (v) {
+                                          if (_isLifetime) return null;
+                                          if (v == null || v.isEmpty) return "Required";
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      flex: 2,
+                                      child: DropdownButtonFormField<String>(
+                                        key: ValueKey(_selectedPeriodUnit),
+                                        initialValue: _selectedPeriodUnit,
+                                        onChanged: _isLifetime ? null : (v) => setState(() => _selectedPeriodUnit = v ?? "Months"),
+                                        items: ["Days", "Weeks", "Months", "Years"].map((u) => DropdownMenuItem(value: u, child: Text(u, overflow: TextOverflow.ellipsis))).toList(),
+                                        decoration: InputDecoration(
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                          filled: true,
+                                          fillColor: _isLifetime ? Colors.grey.shade100 : AppTheme.inputFill,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
-                    ),
+                      ),
+                      const SizedBox(height: 8),
+                      CheckboxListTile(
+                        value: _isLifetime,
+                        onChanged: (v) {
+                          setState(() {
+                            _isLifetime = v ?? false;
+                            if (_isLifetime) {
+                              _periodValueCtrl.clear();
+                            }
+                          });
+                        },
+                        title: const Text("Lifetime / Perpetual Warranty", style: TextStyle(fontSize: 14)),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        activeColor: AppTheme.primaryBrand,
+                      ),
                     const SizedBox(height: 16),
 
                     // Category Dropdown
@@ -345,7 +437,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
                         const Text("Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.secondaryText)),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          value: _selectedCategory,
+                          key: ValueKey(_selectedCategory),
+                          initialValue: _selectedCategory,
                           decoration: const InputDecoration(
                             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                           ),

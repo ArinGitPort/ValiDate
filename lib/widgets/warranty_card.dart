@@ -34,7 +34,12 @@ class WarrantyCard extends StatelessWidget {
     IconData statusIcon;
     String statusLabel;
 
-    if (isExpired) {
+    if (item.isLifetime) {
+      statusBg = const Color(0xFFF0FDF4); // Green-50
+      statusText = const Color(0xFF15803D); // Green-700
+      statusIcon = LucideIcons.infinity;
+      statusLabel = "LIFETIME";
+    } else if (isExpired) {
       statusBg = const Color(0xFFFEF2F2); // Red-50
       statusText = const Color(0xFFB91C1C); // Red-700
       statusIcon = LucideIcons.circle_x; // Or LucideIcons.trash_2

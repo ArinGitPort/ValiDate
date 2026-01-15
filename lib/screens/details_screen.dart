@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:intl/intl.dart';
 import '../providers/warranty_provider.dart';
-import '../widgets/receipt_thumbnail.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_data.dart';
 import 'capture_screen.dart';

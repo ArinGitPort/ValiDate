@@ -51,7 +51,13 @@ class WarrantyItem extends HiveObject {
     this.additionalDocuments,
   });
 
+  bool get isLifetime => warrantyPeriodInMonths > 1000;
+
   DateTime get expiryDate {
+    if (isLifetime) {
+      // Return a distant future date essentially representing 'forever'
+      return DateTime(2999, 12, 31);
+    }
     // Basic calculation: add months. 
     // Note: This logic adds 30 days * months or uses calendar months?
     // Dart's standard DateTime add/subtract logic:
@@ -66,6 +72,8 @@ class WarrantyItem extends HiveObject {
   }
 
   int get daysRemaining {
+    if (isLifetime) return 999999;
+    
     final now = DateTime.now();
     // Reset time components for accurate day diff
     final today = DateTime(now.year, now.month, now.day);
@@ -73,5 +81,5 @@ class WarrantyItem extends HiveObject {
     return expiry.difference(today).inDays;
   }
 
-  bool get isExpired => daysRemaining <= 0;
+  bool get isExpired => !isLifetime && daysRemaining <= 0;
 }
