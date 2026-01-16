@@ -77,10 +77,10 @@ class SettingsScreen extends StatelessWidget {
                         context,
                         title: "Notifications",
                         subtitle: "Expiry alerts (7 days prior)",
-                        value: true, // Need to implement persistence for this later
+                        value: provider.globalNotificationsEnabled,
                         onChanged: (val) {
-                          // Todo: save preference
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Notifications updated")));
+                          provider.setGlobalNotificationsEnabled(val);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Notifications ${val ? 'enabled' : 'disabled'}")));
                         },
                       ),
                       const SizedBox(height: 12),
@@ -240,9 +240,9 @@ class SettingsScreen extends StatelessWidget {
             ),
             ListTile(
               title: const Text("Purchase Date (Newest)"),
-              trailing: provider.sortOrder == 'purchase_date' ? const Icon(LucideIcons.check, color: Colors.blue) : null,
+              trailing: provider.sortOrder == 'purchase_newest' ? const Icon(LucideIcons.check, color: Colors.blue) : null,
               onTap: () {
-                provider.setSortOrder('purchase_date');
+                provider.setSortOrder('purchase_newest');
                 Navigator.pop(context);
               },
             ),
@@ -304,21 +304,25 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showBackupDialog(BuildContext context, WarrantyProvider provider) {
-      // Mock Backup Functionality using JSON export (Write to File)
       showDialog(
          context: context, 
          builder: (_) => AlertDialog(
-           title: const Text("Backup"),
-           content: const Text("Backup functionality saves your data to a local JSON file."),
+           title: const Text("Backup & Restore"),
+           content: const Text("Export your data to a JSON file or restore from a previous backup located in your documents folder."),
            actions: [
              TextButton(
                onPressed: () async {
                   await _performBackup(context, provider);
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
+                  if (context.mounted) Navigator.pop(context);
                }, 
                child: const Text("Export JSON")
+             ),
+             TextButton(
+               onPressed: () async {
+                  await _performRestore(context, provider);
+                  if (context.mounted) Navigator.pop(context);
+               }, 
+               child: const Text("Restore from JSON")
              ),
              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
            ],
@@ -350,6 +354,33 @@ class SettingsScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Backup failed: $e")));
+      }
+    }
+  }
+
+  Future<void> _performRestore(BuildContext context, WarrantyProvider provider) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/validate_backup.json');
+      
+      if (!await file.exists()) {
+         if (context.mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No backup file found (validate_backup.json)")));
+         }
+         return;
+      }
+
+      final content = await file.readAsString();
+      final List<dynamic> jsonList = jsonDecode(content);
+      
+      final count = await provider.restoreData(jsonList);
+      
+      if (context.mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Restored $count items successfully")));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Restore failed: $e")));
       }
     }
   }

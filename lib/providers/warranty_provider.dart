@@ -10,13 +10,15 @@ import 'dart:io';
 class WarrantyProvider with ChangeNotifier {
   static const String boxName = 'warranties';
   static const String logBoxName = 'activity_logs';
+  static const String settingsBoxName = 'app_settings'; // New
   
   Box<WarrantyItem>? _box;
   Box<ActivityLog>? _logBox;
+  Box? _settingsBox; // Generic box for settings
 
   // Preferences
-  String _sortOrder = 'expiring_soon'; // 'expiring_soon' or 'purchase_date'
-  String get sortOrder => _sortOrder;
+  String get sortOrder => _settingsBox?.get('sort_order', defaultValue: 'expiring_soon') ?? 'expiring_soon';
+  bool get globalNotificationsEnabled => _settingsBox?.get('notifications_enabled', defaultValue: true) ?? true;
 
   bool get isInitialized => _box != null && _box!.isOpen && _logBox != null && _logBox!.isOpen;
 
@@ -24,6 +26,7 @@ class WarrantyProvider with ChangeNotifier {
     // Adapters must be registered before opening boxes (done in main.dart)
     _box = await Hive.openBox<WarrantyItem>(boxName);
     _logBox = await Hive.openBox<ActivityLog>(logBoxName);
+    _settingsBox = await Hive.openBox(settingsBoxName);
     
     if (_box!.isEmpty) {
       await _seedData();
@@ -166,7 +169,8 @@ class WarrantyProvider with ChangeNotifier {
   List<WarrantyItem> get activeItems {
     final items = allItems.where((item) => !item.isArchived).toList();
     
-      switch (_sortOrder) {
+      switch (sortOrder) {
+        case 'purchase_date': // Legacy/Fallback
         case 'purchase_newest':
           items.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
           break;
@@ -203,8 +207,15 @@ class WarrantyProvider with ChangeNotifier {
 
   // --- Settings / Utils ---
 
+  // --- Settings / Utils ---
+
   void setSortOrder(String order) {
-    _sortOrder = order;
+    _settingsBox?.put('sort_order', order);
+    notifyListeners();
+  }
+
+  void setGlobalNotificationsEnabled(bool enabled) {
+    _settingsBox?.put('notifications_enabled', enabled);
     notifyListeners();
   }
 
@@ -238,6 +249,49 @@ class WarrantyProvider with ChangeNotifier {
      for (var item in expired) {
        await deleteWarranty(item.id); 
      }
+  }
+
+  Future<int> restoreData(List<dynamic> jsonList) async {
+    if (_box == null) return 0;
+    int importedCount = 0;
+
+    for (var json in jsonList) {
+      if (json is Map<String, dynamic>) {
+        // Basic duplicate check by Serial (if exists) or Name+PurchaseDate
+        // Ideally we check ID, but ID might overlap if generated similarly. 
+        // We will trust ID if provided, else generate new.
+        
+        // This is a simplified restore logic.
+        final String id = json['id'] ?? const Uuid().v4();
+        
+        // Check if ID exists
+        if (!_box!.containsKey(id)) {
+           try {
+             final item = WarrantyItem(
+                id: id,
+                name: json['name'],
+                storeName: json['store'] ?? "",
+                purchaseDate: DateTime.parse(json['purchaseDate']),
+                warrantyPeriodInMonths: json['warrantyMonths'] ?? 12,
+                serialNumber: json['serial'] ?? "",
+                category: json['category'] ?? "others",
+                imagePath: "", // Cannot restore local image paths easily unless relative or backed up zip
+                notificationsEnabled: true,
+             );
+             await _box!.put(id, item);
+             importedCount++;
+           } catch (e) {
+             debugPrint("Failed to import item: $e");
+           }
+        }
+      }
+    }
+    
+    if (importedCount > 0) {
+      notifyListeners();
+      await _addLog("restored", "Restored $importedCount items from backup");
+    }
+    return importedCount;
   }
 
   // --- Logs ---
