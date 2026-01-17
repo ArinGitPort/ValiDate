@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'main_layout.dart';
-import '../theme/app_theme.dart';
+import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,8 +20,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
     
-    // SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive); // Removed to prevent layout issues
-
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1, milliseconds: 500),
@@ -36,14 +35,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _controller.forward();
 
-    // Navigate to Main Screen after delay
+    // Navigate based on auth state after delay
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        // SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge); // Removed
+        final user = FirebaseAuth.instance.currentUser;
         
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MainLayout()), 
+          MaterialPageRoute(
+            builder: (_) => user != null ? const MainLayout() : const LoginScreen(),
+          ),
         );
       }
     });

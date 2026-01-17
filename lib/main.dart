@@ -6,8 +6,9 @@ import 'models/activity_log.dart';
 import 'providers/warranty_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
-
 import 'services/notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,9 @@ void main() async {
 
   // Initialize Notifications & Timezones
   await NotificationService().initialize();
+
+  // Initialize Firebase
+  await Firebase.initializeApp();
 
   runApp(const ValiDateApp());
 }
