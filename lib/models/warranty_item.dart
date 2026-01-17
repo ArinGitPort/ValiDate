@@ -29,13 +29,16 @@ class WarrantyItem extends HiveObject {
   final String imagePath;
 
   @HiveField(8)
-  bool isArchived;
+  final bool isArchived;
 
   @HiveField(9)
   bool? notificationsEnabled;
-
-  @HiveField(10)
+  
+  // Optional: We can still keep these for potential cloud usage or just ignore them in Hive
   List<String>? additionalDocuments;
+  String? firebaseId;
+  bool isSynced;
+  String? remoteImageUrl;
 
   WarrantyItem({
     required this.id,
@@ -43,43 +46,79 @@ class WarrantyItem extends HiveObject {
     required this.storeName,
     required this.purchaseDate,
     required this.warrantyPeriodInMonths,
-    required this.serialNumber,
+    this.serialNumber = '',
     required this.category,
-    required this.imagePath,
+    this.imagePath = '',
     this.isArchived = false,
-    this.notificationsEnabled,
+    this.notificationsEnabled = true,
     this.additionalDocuments,
+    this.firebaseId,
+    this.isSynced = false,
+    this.remoteImageUrl,
   });
 
-  bool get isLifetime => warrantyPeriodInMonths > 1000;
-
+  // Calculate expiry date
   DateTime get expiryDate {
-    if (isLifetime) {
-      // Return a distant future date essentially representing 'forever'
-      return DateTime(2999, 12, 31);
+    if (warrantyPeriodInMonths == -1) {
+      // Lifetime warranty - effectively never expires
+      return DateTime(9999, 12, 31); 
     }
-    // Basic calculation: add months. 
-    // Note: This logic adds 30 days * months or uses calendar months?
-    // Dart's standard DateTime add/subtract logic:
-    // Adding months directly isn't built-in perfectly, but mostly:
-    // date.copyWith(month: date.month + months) handles year rollover automatically.
-    // However, clean way:
-    return DateTime(
-      purchaseDate.year,
-      purchaseDate.month + warrantyPeriodInMonths,
-      purchaseDate.day,
-    );
+    return purchaseDate.add(Duration(days: warrantyPeriodInMonths * 30));
   }
 
+  // Calculate days remaining
   int get daysRemaining {
-    if (isLifetime) return 999999;
-    
+    if (isLifetime) return 9999;
     final now = DateTime.now();
-    // Reset time components for accurate day diff
+    // Reset time components for accurate day calculation
     final today = DateTime(now.year, now.month, now.day);
     final expiry = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
     return expiry.difference(today).inDays;
   }
 
-  bool get isExpired => !isLifetime && daysRemaining <= 0;
+  bool get isExpired {
+    if (isLifetime) return false;
+    return DateTime.now().isAfter(expiryDate);
+  }
+
+  bool get isLifetime => warrantyPeriodInMonths == -1;
+
+  // -- Helpers for Firestore (keeping them won't hurt, but Hive handles serialization via adapter) --
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'storeName': storeName,
+      'purchaseDate': purchaseDate.toIso8601String(),
+      'warrantyPeriodInMonths': warrantyPeriodInMonths,
+      'serialNumber': serialNumber,
+      'category': category,
+      'imagePath': imagePath,
+      'isArchived': isArchived,
+      'notificationsEnabled': notificationsEnabled,
+      'additionalDocuments': additionalDocuments,
+      // 'firebaseId': firebaseId, // Don't upload the ID as a field usually, but ok
+      'remoteImageUrl': remoteImageUrl,
+    };
+  }
+
+  factory WarrantyItem.fromMap(Map<String, dynamic> map, String id) {
+    return WarrantyItem(
+      id: map['id'] ?? id, // fallback
+      name: map['name'] ?? '',
+      storeName: map['storeName'] ?? '',
+      purchaseDate: DateTime.tryParse(map['purchaseDate'] ?? '') ?? DateTime.now(),
+      warrantyPeriodInMonths: map['warrantyPeriodInMonths'] ?? 0,
+      serialNumber: map['serialNumber'] ?? '',
+      category: map['category'] ?? '',
+      imagePath: map['imagePath'] ?? '',
+      isArchived: map['isArchived'] ?? false,
+      notificationsEnabled: map['notificationsEnabled'],
+      additionalDocuments: map['additionalDocuments'] != null ? List<String>.from(map['additionalDocuments']) : null,
+      firebaseId: id,
+      isSynced: true,
+    );
+  }
 }
+

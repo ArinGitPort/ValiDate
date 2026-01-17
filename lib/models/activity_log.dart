@@ -8,7 +8,7 @@ class ActivityLog extends HiveObject {
   final String id;
 
   @HiveField(1)
-  final String actionType; // "added", "archived", "deleted", "unarchived"
+  final String actionType; // "added", "updated", "deleted", "archived"
 
   @HiveField(2)
   final String description;

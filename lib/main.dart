@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'models/warranty_item.dart';
-import 'models/activity_log.dart';
+
 import 'providers/warranty_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'models/warranty_item.dart';
+import 'models/activity_log.dart';
 
 
 void main() async {
@@ -15,14 +16,13 @@ void main() async {
   
   // Initialize Hive
   await Hive.initFlutter();
-  // Register Adapters
   Hive.registerAdapter(WarrantyItemAdapter());
   Hive.registerAdapter(ActivityLogAdapter());
-
+  
   // Initialize Notifications & Timezones
   await NotificationService().initialize();
 
-  // Initialize Firebase
+  // Initialize Firebase (Only for Auth)
   await Firebase.initializeApp();
 
   runApp(const ValiDateApp());

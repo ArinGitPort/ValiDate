@@ -77,22 +77,7 @@ class ArchiveScreen extends StatelessWidget {
                               child: WarrantyCard(
                                 item: item,
                                 onTap: () {
-                                   showDialog(
-                                     context: context,
-                                     builder: (ctx) => AlertDialog(
-                                       title: const Text("Restore Item?"),
-                                       actions: [
-                                         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-                                         TextButton(
-                                           onPressed: () {
-                                             provider.toggleArchive(item.id, false);
-                                             Navigator.pop(ctx);
-                                           },
-                                           child: const Text("Restore"),
-                                         ),
-                                       ],
-                                     ),
-                                   );
+                                   _showArchiveOptions(context, provider, item);
                                 },
                               ),
                             ),
@@ -106,6 +91,68 @@ class ArchiveScreen extends StatelessWidget {
             );
           },
         ),
+      ),
+    );
+  }
+
+  void _showArchiveOptions(BuildContext context, WarrantyProvider provider, dynamic item) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(LucideIcons.archive_restore, color: Colors.blue),
+              title: const Text("Restore to Vault"),
+              onTap: () {
+                provider.toggleArchive(item.id, false);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("${item.name} restored")),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(LucideIcons.trash_2, color: Colors.red),
+              title: const Text("Delete Permanently", style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDelete(context, provider, item);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WarrantyProvider provider, dynamic item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Permanently?"),
+        content: const Text("This cannot be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () {
+              provider.deleteWarranty(item.id);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("${item.name} deleted")),
+              );
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }

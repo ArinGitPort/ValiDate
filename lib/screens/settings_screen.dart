@@ -7,6 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import '../providers/warranty_provider.dart';
 import '../widgets/page_header.dart';
 import '../services/pdf_service.dart';
+import '../services/auth_service.dart';
+import 'login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -102,6 +105,37 @@ class SettingsScreen extends StatelessWidget {
                         onTap: () => _showLegalDialog(context),
                       ),
                       
+                      const SizedBox(height: 32),
+                      _buildSectionHeader("Account"),
+                      _buildInfoTile(
+                         icon: LucideIcons.user,
+                         title: "Email",
+                         value: FirebaseAuth.instance.currentUser?.email ?? "Not logged in",
+                      ),
+
+                      const SizedBox(height: 32),
+                      _buildSectionHeader("Danger Zone"),
+                      _buildSettingsTile(
+                        context,
+                        icon: LucideIcons.skull,
+                        title: "Reset Account Data",
+                        subtitle: "Permanently delete all local data",
+                        color: Colors.red,
+                        onTap: () => _confirmResetAccount(context, provider),
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      _buildSettingsTile(
+                        context,
+                        icon: LucideIcons.log_out,
+                        title: "Sign Out",
+                        subtitle: "Log out of your account",
+                        color: Colors.red,
+                        onTap: () async {
+                           await _handleSignOut(context);
+                        },
+                      ),
+
                       const SizedBox(height: 50),
                       Center(
                         child: Text(
@@ -153,7 +187,7 @@ class SettingsScreen extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1), // Fixed deprecation
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 20),
@@ -353,4 +387,106 @@ class SettingsScreen extends StatelessWidget {
       }
     }
   }
+  Future<void> _handleSignOut(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Sign Out"),
+        content: const Text("Are you sure you want to sign out?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Sign Out", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true && context.mounted) {
+      try {
+        await AuthService().signOut();
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error signing out: $e")),
+          );
+        }
+      }
+    }
+  }
+
+  void _confirmResetAccount(BuildContext context, WarrantyProvider provider) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Reset Account Data?", style: TextStyle(color: Colors.red)),
+        content: const Text(
+          "This will PERMANENTLY DELETE all your warranties, images, and logs from this device.\n\nThis action cannot be undone.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close first dialog
+              _finalConfirmReset(context, provider);
+            },
+            child: const Text("Delete Everything", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _finalConfirmReset(BuildContext context, WarrantyProvider provider) {
+     showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Are you absolutely sure?"),
+        content: const Text("There is no going back."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () async {
+               Navigator.pop(context);
+               await _performReset(context, provider);
+            },
+            child: const Text("I Understand, Delete.", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performReset(BuildContext context, WarrantyProvider provider) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+      
+      await provider.resetAccount();
+      
+      if (context.mounted) {
+        Navigator.pop(context); // Pop loading
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Account data reset successfully")));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Pop loading
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Reset failed: $e")));
+      }
+    }
+  }
 }
+

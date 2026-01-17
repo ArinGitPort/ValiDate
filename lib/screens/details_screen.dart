@@ -258,8 +258,7 @@ class DetailsScreen extends StatelessWidget {
                             value: item.notificationsEnabled ?? true,
                             onChanged: (value) {
                               item.notificationsEnabled = value;
-                              item.save();
-                              provider.notify();
+                              provider.updateWarranty(item);
                             },
                             activeTrackColor: AppTheme.primaryBrand,
                           ),
