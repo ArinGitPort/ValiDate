@@ -31,7 +31,7 @@ class WarrantyItem {
 
   // Calculate expiry date
   DateTime get expiryDate {
-    if (warrantyPeriodInMonths == -1) {
+    if (isLifetime) {
       return DateTime(9999, 12, 31); // Lifetime
     }
     return purchaseDate.add(Duration(days: warrantyPeriodInMonths * 30));
@@ -51,7 +51,7 @@ class WarrantyItem {
     return DateTime.now().isAfter(expiryDate);
   }
 
-  bool get isLifetime => warrantyPeriodInMonths == -1;
+  bool get isLifetime => warrantyPeriodInMonths == -1 || warrantyPeriodInMonths >= 9999;
 
   // Backward compatibility getter for UI components
   String get imagePath => imageUrl ?? '';

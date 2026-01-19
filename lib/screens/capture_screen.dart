@@ -64,7 +64,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
   // ... (previous methods)
 
   int get _calculatedMonths {
-    if (_isLifetime) return 9999;
+    if (_isLifetime) return -1;
     
     final val = int.tryParse(_periodValueCtrl.text) ?? 0;
     switch (_selectedPeriodUnit) {

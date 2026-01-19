@@ -25,6 +25,7 @@ class AppTheme {
   
   static const Color white = Color(0xFFFFFFFF);
   static const Color statusSafeText = Color(0xFF15803D); // Green-700
+  static const Color success = statusSafeText; // Alias for success state
   
   static const Color statusWarningBg = Color(0xFFFFF7ED); // Orange-50
   static const Color statusWarningText = Color(0xFFC2410C); // Orange-700

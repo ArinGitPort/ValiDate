@@ -134,16 +134,33 @@ class DetailsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Count Down
-                    Text(
-                      days < 0 ? "${days.abs()} DAYS AGO" : "$days DAYS LEFT",
-                      style: Theme.of(context).textTheme.displayLarge,
-                    ),
+                    if (item.isLifetime)
+                      Text(
+                        "LIFETIME WARRANTY",
+                        style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                          color: AppTheme.success,
+                          fontSize: 28,
+                        ),
+                      )
+                    else 
+                      Text(
+                        days < 0 ? "${days.abs()} DAYS AGO" : "$days DAYS LEFT",
+                        style: Theme.of(context).textTheme.displayLarge,
+                      ),
+                      
                     const SizedBox(height: 8),
-                     Text(
-                      days < 0 ? "Expired on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}" 
-                              : "Expires on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}",
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 14),
-                    ),
+                    
+                    if (!item.isLifetime)
+                      Text(
+                        days < 0 ? "Expired on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}" 
+                                : "Expires on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}",
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 14),
+                      )
+                    else
+                      Text(
+                        "Never Expires",
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 14, color: AppTheme.success),
+                      ),
                     
 
                     const SizedBox(height: 32),
@@ -152,7 +169,7 @@ class DetailsScreen extends StatelessWidget {
                     _buildDetailRow(context, LucideIcons.store, "Store", item.storeName),
                     _buildDetailRow(context, LucideIcons.calendar, "Purchased", DateFormat('yyyy-MM-dd').format(item.purchaseDate)),
                     _buildDetailRow(context, LucideIcons.hash, "Serial", item.serialNumber),
-                    _buildDetailRow(context, LucideIcons.clock, "Term", "${item.warrantyPeriodInMonths} Months"),
+                    _buildDetailRow(context, LucideIcons.clock, "Term", _formatDuration(item.warrantyPeriodInMonths)),
                     
                     const SizedBox(height: 32),
                     
@@ -342,5 +359,13 @@ class DetailsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+  String _formatDuration(int months) {
+    if (months == -1 || months >= 9999) return "Lifetime";
+    if (months >= 12 && months % 12 == 0) {
+      final years = months ~/ 12;
+      return "$years ${years == 1 ? 'Year' : 'Years'}";
+    }
+    return "$months Months";
   }
 }
