@@ -1,4 +1,4 @@
-import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../providers/warranty_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_data.dart';
+import '../widgets/smart_image.dart';
 import 'capture_screen.dart';
 
 
@@ -60,8 +61,8 @@ class DetailsScreen extends StatelessWidget {
                               minScale: 0.5,
                               maxScale: 4.0,
                               child: Center(
-                                child: Image.file(
-                                  File(item.imagePath),
+                                child: SmartImage(
+                                  imagePath: item.imagePath,
                                   fit: BoxFit.contain,
                                 ),
                               ),
@@ -87,13 +88,9 @@ class DetailsScreen extends StatelessWidget {
                     children: [
                       Hero(
                         tag: 'img_${item.id}',
-                        child: Image.file(
-                          File(item.imagePath), 
+                        child: SmartImage(
+                          imagePath: item.imagePath, 
                           fit: BoxFit.cover,
-                          errorBuilder: (c,e,s) => Container(
-                            color: AppTheme.zinc100, 
-                            child: const Icon(LucideIcons.image, size: 48, color: AppTheme.zinc400)
-                          ),
                         ),
                       ),
                       
@@ -196,8 +193,8 @@ class DetailsScreen extends StatelessWidget {
                                           minScale: 0.5,
                                           maxScale: 4.0,
                                           child: Center(
-                                            child: Image.file(
-                                              File(path),
+                                            child: SmartImage(
+                                              imagePath: path,
                                               fit: BoxFit.contain,
                                             ),
                                           ),
@@ -218,15 +215,13 @@ class DetailsScreen extends StatelessWidget {
                                   ),
                                 );
                               },
-                              child: Container(
-                                width: 120,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppTheme.dividerColor),
-                                  image: DecorationImage(
-                                    image: FileImage(File(path)),
-                                    fit: BoxFit.cover,
-                                  ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: SmartImage(
+                                  imagePath: path,
+                                  fit: BoxFit.cover,
+                                  width: 120,
+                                  height: 120,
                                 ),
                               ),
                             );

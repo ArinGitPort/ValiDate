@@ -13,6 +13,7 @@ import '../providers/warranty_provider.dart';
 import '../services/ocr_service.dart';
 import '../utils/category_data.dart';
 import '../theme/app_theme.dart';
+import '../widgets/smart_image.dart';
 
 class CaptureScreen extends StatefulWidget {
   final WarrantyItem? item; // Null implies new item
@@ -39,6 +40,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
   DateTime? _selectedDate;
   String _selectedCategory = "others";
   bool _isLoading = false;
+  bool _isPickingImage = false; // Guard to prevent multiple picker calls
 
   final OCRService _ocrService = OCRService();
 
@@ -84,7 +86,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
     // Validate category exists, else default to 'others'
     final exists = CategoryData.categories.any((c) => c.id == item.category);
     _selectedCategory = exists ? item.category : 'others';
-    _additionalImages = List.from(item.additionalDocuments ?? []);
+    _additionalImages = List.from(item.additionalDocuments);
 
     // Populate Warranty Period
     if (item.warrantyPeriodInMonths > 1000) {
@@ -98,74 +100,88 @@ class _CaptureScreenState extends State<CaptureScreen> {
   }
 
   Future<void> _pickAdditionalImage() async {
-    final picker = ImagePicker();
-    // Allow multi-selection if supported, but for now single pick loop is fine or pickMultiImage
-    final pickedFiles = await picker.pickMultiImage();
+    if (_isPickingImage) return; // Prevent multiple simultaneous calls
+    _isPickingImage = true;
     
-    if (pickedFiles.isNotEmpty) {
-       final appDir = await getApplicationDocumentsDirectory();
-       List<String> newPaths = [];
+    try {
+      final picker = ImagePicker();
+      final pickedFiles = await picker.pickMultiImage();
+      
+      if (pickedFiles.isNotEmpty) {
+         final appDir = await getApplicationDocumentsDirectory();
+         List<String> newPaths = [];
 
-       for (var picked in pickedFiles) {
-          final fileName = path.basename(picked.path);
-          // Append timestamp to avoid collisions if needed, but basename usually fine
-          final savedImage = await File(picked.path).copy('${appDir.path}/${DateTime.now().millisecondsSinceEpoch}_$fileName');
-          newPaths.add(savedImage.path);
-       }
+         for (var picked in pickedFiles) {
+            final fileName = path.basename(picked.path);
+            final savedImage = await File(picked.path).copy('${appDir.path}/${DateTime.now().millisecondsSinceEpoch}_$fileName');
+            newPaths.add(savedImage.path);
+         }
 
-       setState(() {
-         _additionalImages.addAll(newPaths);
-       });
+         if (mounted) {
+           setState(() {
+             _additionalImages.addAll(newPaths);
+           });
+         }
+      }
+    } finally {
+      _isPickingImage = false;
     }
   }
 
   Future<void> _pickImage() async {
-    // Show dialog to choose between camera and gallery
-    final ImageSource? source = await showDialog<ImageSource>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Select Image Source'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(LucideIcons.camera),
-                title: const Text('Camera'),
-                onTap: () => Navigator.pop(context, ImageSource.camera),
-              ),
-              ListTile(
-                leading: const Icon(LucideIcons.image),
-                title: const Text('Gallery'),
-                onTap: () => Navigator.pop(context, ImageSource.gallery),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    if (_isPickingImage) return;
+    _isPickingImage = true;
 
-    if (source == null) {
-      // User cancelled the dialog
-      if (mounted && _imagePath == null) Navigator.pop(context);
-      return;
-    }
+    try {
+      // Show dialog to choose between camera and gallery
+      final ImageSource? source = await showDialog<ImageSource>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Select Image Source'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(LucideIcons.camera),
+                  title: const Text('Camera'),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(LucideIcons.image),
+                  title: const Text('Gallery'),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+              ],
+            ),
+          );
+        },
+      );
 
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source);
-    if (picked != null) {
-      final appDir = await getApplicationDocumentsDirectory();
-      final fileName = path.basename(picked.path);
-      final savedImage = await File(picked.path).copy('${appDir.path}/$fileName');
+      if (source == null) {
+        // User cancelled the dialog
+        if (mounted && _imagePath == null) Navigator.pop(context);
+        return;
+      }
 
-      setState(() {
-        _imagePath = savedImage.path;
-      });
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: source);
+      if (picked != null) {
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = path.basename(picked.path);
+        final savedImage = await File(picked.path).copy('${appDir.path}/$fileName');
 
-      _scanImageForDate(savedImage.path);
-    } else {
-      // User cancelled image picker, maybe pop?
-      if (mounted && _imagePath == null) Navigator.pop(context);
+        setState(() {
+          _imagePath = savedImage.path;
+        });
+
+        _scanImageForDate(savedImage.path);
+      } else {
+        // User cancelled image picker, maybe pop?
+        if (mounted && _imagePath == null) Navigator.pop(context);
+      }
+    } finally {
+      _isPickingImage = false;
     }
   }
 
@@ -242,6 +258,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
         serialNumber: _serialCtrl.text,
         category: _selectedCategory, 
         imageUrl: _imagePath, // Local path - provider will upload
+        additionalDocuments: _additionalImages,
         notificationsEnabled: isEditing ? widget.item!.notificationsEnabled : true,
         isArchived: isEditing ? widget.item!.isArchived : false,
       );
@@ -249,7 +266,10 @@ class _CaptureScreenState extends State<CaptureScreen> {
       if (isEditing) {
         await provider.updateWarranty(newItem);
       } else {
-        await provider.addWarranty(newItem);
+        await provider.addWarranty(
+          newItem,
+          extraDocs: _additionalImages,
+        );
       }
       
       if (mounted) Navigator.pop(context);
@@ -291,7 +311,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 fit: StackFit.expand,
                 children: [
                   _imagePath != null 
-                    ? Image.file(File(_imagePath!), fit: BoxFit.cover)
+                    ? SmartImage(imagePath: _imagePath, fit: BoxFit.cover)
                     : Container(color: AppTheme.primaryDark, child: const Icon(Icons.camera_alt, color: AppTheme.white)),
                   
                   
@@ -502,18 +522,15 @@ class _CaptureScreenState extends State<CaptureScreen> {
                                 final path = _additionalImages[index];
                                 return Stack(
                                   children: [
-                                    Container(
-                                      width: 100,
-                                      height: 100,
-                                      decoration: BoxDecoration(
+                                      ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.grey.shade200),
-                                        image: DecorationImage(
-                                          image: FileImage(File(path)),
+                                        child: SmartImage(
+                                          imagePath: path,
                                           fit: BoxFit.cover,
+                                          width: 100,
+                                          height: 100,
                                         ),
                                       ),
-                                    ),
                                     Positioned(
                                       top: 4,
                                       right: 4,

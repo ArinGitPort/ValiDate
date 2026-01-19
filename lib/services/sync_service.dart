@@ -58,4 +58,56 @@ class SyncService {
       debugPrint('SyncService: Image delete failed: $e');
     }
   }
+
+  /// Upload additional documents for a warranty
+  Future<List<String>> uploadAdditionalDocuments(String warrantyId, List<String> localPaths) async {
+    final uploadedUrls = <String>[];
+    
+    for (final localPath in localPaths) {
+      final url = await uploadImage(localPath);
+      if (url != null) {
+        // Insert into warranty_documents table
+        await _client.from('warranty_documents').insert({
+          'warranty_id': warrantyId,
+          'document_url': url,
+        });
+        uploadedUrls.add(url);
+      }
+    }
+    
+    return uploadedUrls;
+  }
+
+  /// Fetch additional documents for a warranty
+  Future<List<String>> fetchAdditionalDocuments(String warrantyId) async {
+    try {
+      final response = await _client
+          .from('warranty_documents')
+          .select('document_url')
+          .eq('warranty_id', warrantyId);
+      
+      return (response as List).map((e) => e['document_url'] as String).toList();
+    } catch (e) {
+      debugPrint('SyncService: Error fetching documents: $e');
+      return [];
+    }
+  }
+
+  /// Delete all additional documents for a warranty
+  Future<void> deleteAdditionalDocuments(String warrantyId) async {
+    try {
+      // Get URLs first
+      final docs = await fetchAdditionalDocuments(warrantyId);
+      
+      // Delete from storage
+      for (final url in docs) {
+        await deleteImage(url);
+      }
+      
+      // Delete from database
+      await _client.from('warranty_documents').delete().eq('warranty_id', warrantyId);
+    } catch (e) {
+      debugPrint('SyncService: Error deleting documents: $e');
+    }
+  }
 }

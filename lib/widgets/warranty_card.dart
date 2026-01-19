@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -7,6 +5,7 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import '../models/warranty_item.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_data.dart';
+import 'smart_image.dart';
 
 class WarrantyCard extends StatelessWidget {
   final WarrantyItem item;
@@ -134,10 +133,9 @@ class WarrantyCard extends StatelessWidget {
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: item.imagePath.isNotEmpty
-                        ? Image.file(
-                            File(item.imagePath),
+                        ? SmartImage(
+                            imagePath: item.imagePath,
                             fit: BoxFit.cover,
-                            errorBuilder: (c, e, s) => const Icon(LucideIcons.image, color: AppTheme.secondaryText),
                           )
                         : const Icon(LucideIcons.receipt, color: AppTheme.secondaryText),
                   ),

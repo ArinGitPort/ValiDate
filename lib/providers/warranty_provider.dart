@@ -49,10 +49,10 @@ class WarrantyProvider with ChangeNotifier {
     if (_userId == null) return;
 
     try {
-      // Fetch warranties
+      // Fetch warranties with documents
       final warrantyResponse = await _client
           .from('warranties')
-          .select()
+          .select('*, warranty_documents(document_url)')
           .eq('user_id', _userId!)
           .order('created_at', ascending: false);
 
@@ -119,14 +119,24 @@ class WarrantyProvider with ChangeNotifier {
   int get totalActiveCount => activeItems.length;
   int get expiringCount => expiringSoonItems.length;
 
-  Future<void> addWarranty(WarrantyItem item) async {
+  Future<void> addWarranty(WarrantyItem item, {List<String>? extraDocs}) async {
     if (_userId == null) return;
 
     try {
-      // Upload image if exists
-      String? imageUrl;
+      // Upload image if exists (local path)
+      String? imageUrl = item.imageUrl;
+      
       if (item.imageUrl != null && item.imageUrl!.isNotEmpty && !item.imageUrl!.startsWith('http')) {
-        imageUrl = await _syncService.uploadImage(item.imageUrl!);
+        debugPrint('WarrantyProvider: Uploading image from ${item.imageUrl}');
+        final uploadedUrl = await _syncService.uploadImage(item.imageUrl!);
+        
+        if (uploadedUrl != null) {
+          imageUrl = uploadedUrl;
+          debugPrint('WarrantyProvider: Image uploaded to $uploadedUrl');
+        } else {
+          debugPrint('WarrantyProvider: Image upload failed, saving without image');
+          imageUrl = null; // Don't save local path to database
+        }
       }
 
       final newItem = item.copyWith(
@@ -135,7 +145,22 @@ class WarrantyProvider with ChangeNotifier {
         imageUrl: imageUrl,
       );
 
+      // Insert warranty
       await _client.from('warranties').insert(newItem.toJson());
+      
+      // Handle Additional Documents
+      // Merge docs from item.additionalDocuments (if populated) and extraDocs (argument)
+      List<String> docsToUpload = [];
+      if (item.additionalDocuments.isNotEmpty) docsToUpload.addAll(item.additionalDocuments);
+      if (extraDocs != null) docsToUpload.addAll(extraDocs);
+      
+      // Deduplicate
+      docsToUpload = docsToUpload.toSet().toList();
+
+      if (docsToUpload.isNotEmpty) {
+        debugPrint('WarrantyProvider: Uploading ${docsToUpload.length} additional documents');
+        await _syncService.uploadAdditionalDocuments(newItem.id, docsToUpload);
+      }
       
       // Notifications
       await NotificationService().scheduleWarrantyNotification(
@@ -155,8 +180,69 @@ class WarrantyProvider with ChangeNotifier {
 
   Future<void> updateWarranty(WarrantyItem item) async {
     try {
-      await _client.from('warranties').update(item.toJson()).eq('id', item.id);
+      // 1. Handle Primary Image Update
+      String? imageUrl = item.imageUrl;
       
+      // Fetch currently saved item to compare primary image
+      final oldItem = _items.firstWhere((e) => e.id == item.id, orElse: () => item);
+
+      // Check if image changed
+      if (item.imageUrl != oldItem.imageUrl) {
+        // If new image is a local file (not http), Upload it
+        if (item.imageUrl != null && !item.imageUrl!.startsWith('http')) {
+           debugPrint('WarrantyProvider: Uploading new primary image');
+           final uploadedUrl = await _syncService.uploadImage(item.imageUrl!);
+           if (uploadedUrl != null) {
+             imageUrl = uploadedUrl; // Update to remote URL
+           }
+        }
+        
+        // If we successfully have a new image (or it was null/removed), 
+        // and there was an old remote image, delete the old one
+        if (oldItem.imageUrl != null && oldItem.imageUrl!.startsWith('http')) {
+          await _syncService.deleteImage(oldItem.imageUrl);
+        }
+      }
+
+      final itemToUpdate = item.copyWith(imageUrl: imageUrl);
+
+      // 2. Update basic fields with correct URL
+      await _client.from('warranties').update(itemToUpdate.toJson()).eq('id', item.id);
+      
+      // 2. Handle Additional Documents Update
+      // Fetch currently saved documents for this warranty to compare
+      // We can rely on _items if it's up to date, but fetching fresh is safer for concurrency 
+      // or we can use the ones currently in memory for this item id. 
+      // Let's assume _items is ground truth.
+      // Let's assume _items is ground truth.
+      // Reuse oldItem fetched above
+      final oldDocs = oldItem.additionalDocuments; // List<String> URLs
+      final newDocs = item.additionalDocuments;    // List<String> Mixed URLs and Local Paths
+
+      // Helper to check if string is a remote URL
+      bool isRemote(String s) => s.startsWith('http');
+
+      // Identify docs to delete: In old but NOT in new (by exact string match for URLs)
+      // Note: If a URL is in newDocs, it should match oldDocs exactly. Local paths are new additions.
+      final docsToDelete = oldDocs.where((url) => !newDocs.contains(url)).toList();
+
+      // Identify new docs to upload: In newDocs but NOT remote (i.e., local paths)
+      final docsToUpload = newDocs.where((path) => !isRemote(path)).toList();
+
+      // Execute Deletions
+      for (final url in docsToDelete) {
+        await _syncService.deleteImage(url); // Delete storage
+        await _client.from('warranty_documents').delete().match({
+          'warranty_id': item.id,
+          'document_url': url
+        }); // Delete DB record
+      }
+
+      // Execute Uploads
+      if (docsToUpload.isNotEmpty) {
+         await _syncService.uploadAdditionalDocuments(item.id, docsToUpload);
+      }
+
       await NotificationService().scheduleWarrantyNotification(
         itemId: item.id,
         itemName: item.name,
@@ -180,6 +266,9 @@ class WarrantyProvider with ChangeNotifier {
       if (item.imageUrl != null) {
         await _syncService.deleteImage(item.imageUrl);
       }
+      
+      // Delete additional documents
+      await _syncService.deleteAdditionalDocuments(id);
       
       await _client.from('warranties').delete().eq('id', id);
       await _addLog("deleted", "Deleted ${item.name}", itemId: id);

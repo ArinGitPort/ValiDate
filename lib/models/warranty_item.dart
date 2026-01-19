@@ -7,6 +7,7 @@ class WarrantyItem {
   final int warrantyPeriodInMonths;
   final String serialNumber;
   final String category;
+  final List<String> additionalDocuments;
   final String? imageUrl;
   final bool isArchived;
   final bool notificationsEnabled;
@@ -22,6 +23,7 @@ class WarrantyItem {
     this.serialNumber = '',
     required this.category,
     this.imageUrl,
+    this.additionalDocuments = const [],
     this.isArchived = false,
     this.notificationsEnabled = true,
     DateTime? createdAt,
@@ -54,9 +56,6 @@ class WarrantyItem {
   // Backward compatibility getter for UI components
   String get imagePath => imageUrl ?? '';
   
-  // Stub for additionalDocuments (not stored in Supabase yet)
-  List<String>? get additionalDocuments => null;
-
   // Supabase JSON serialization
   Map<String, dynamic> toJson() {
     return {
@@ -75,6 +74,13 @@ class WarrantyItem {
   }
 
   factory WarrantyItem.fromJson(Map<String, dynamic> json) {
+    // Extract documents if available
+    List<String> docs = [];
+    if (json['warranty_documents'] != null) {
+      final docList = json['warranty_documents'] as List;
+      docs = docList.map((d) => d['document_url'] as String).toList();
+    }
+
     return WarrantyItem(
       id: json['id'],
       userId: json['user_id'],
@@ -85,6 +91,7 @@ class WarrantyItem {
       serialNumber: json['serial_number'] ?? '',
       category: json['category'] ?? '',
       imageUrl: json['image_url'],
+      additionalDocuments: docs,
       isArchived: json['is_archived'] ?? false,
       notificationsEnabled: json['notifications_enabled'] ?? true,
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
@@ -101,6 +108,7 @@ class WarrantyItem {
     String? serialNumber,
     String? category,
     String? imageUrl,
+    List<String>? additionalDocuments,
     bool? isArchived,
     bool? notificationsEnabled,
   }) {
@@ -114,9 +122,11 @@ class WarrantyItem {
       serialNumber: serialNumber ?? this.serialNumber,
       category: category ?? this.category,
       imageUrl: imageUrl ?? this.imageUrl,
+      additionalDocuments: additionalDocuments ?? this.additionalDocuments,
       isArchived: isArchived ?? this.isArchived,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       createdAt: createdAt,
     );
   }
 }
+
