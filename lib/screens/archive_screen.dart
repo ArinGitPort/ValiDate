@@ -4,6 +4,7 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import '../providers/warranty_provider.dart';
 import '../widgets/warranty_card.dart';
 import '../widgets/page_header.dart';
+import 'details_screen.dart'; // Import needed for DetailsScreen navigation
 
 class ArchiveScreen extends StatelessWidget {
   const ArchiveScreen({super.key});
@@ -77,7 +78,37 @@ class ArchiveScreen extends StatelessWidget {
                               child: WarrantyCard(
                                 item: item,
                                 onTap: () {
-                                   _showArchiveOptions(context, provider, item);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => DetailsScreen(itemId: item.id)),
+                                  );
+                                },
+                                onArchive: (ctx) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (dialogCtx) => AlertDialog(
+                                      title: const Text("Restore to Vault?"),
+                                      content: const Text("This will move the warranty back to your active list."),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text("Cancel")),
+                                        TextButton(
+                                          onPressed: () async {
+                                            Navigator.pop(dialogCtx); 
+                                            await provider.toggleArchive(item.id, false);
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text("${item.name} restored")),
+                                              );
+                                            }
+                                          },
+                                          child: const Text("Restore"),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                onDelete: (ctx) {
+                                   _confirmDelete(context, provider, item);
                                 },
                               ),
                             ),
@@ -90,45 +121,6 @@ class ArchiveScreen extends StatelessWidget {
               ],
             );
           },
-        ),
-      ),
-    );
-  }
-
-  void _showArchiveOptions(BuildContext context, WarrantyProvider provider, dynamic item) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(LucideIcons.archive_restore, color: Colors.blue),
-              title: const Text("Restore to Vault"),
-              onTap: () {
-                provider.toggleArchive(item.id, false);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("${item.name} restored")),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(LucideIcons.trash_2, color: Colors.red),
-              title: const Text("Delete Permanently", style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmDelete(context, provider, item);
-              },
-            ),
-          ],
         ),
       ),
     );

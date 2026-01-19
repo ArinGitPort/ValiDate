@@ -132,16 +132,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               );
                             },
                             onArchive: (ctx) {
-                              provider.toggleArchive(item.id, true);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Archived"),
-                                  behavior: SnackBarBehavior.floating,
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(item.isArchived ? "Unarchive Warranty?" : "Archive Warranty?"),
+                                  content: Text(item.isArchived 
+                                    ? "This will move the warranty back to your active vault." 
+                                    : "This will move the warranty to the archive. You can restore it later."),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text("Cancel"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        provider.toggleArchive(item.id, true);
+                                        Navigator.pop(ctx);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text("Archived"),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      },
+                                      child: const Text("Archive"),
+                                    ),
+                                  ],
                                 ),
                               );
                             },
                             onDelete: (ctx) {
-                               provider.deleteWarranty(item.id);
+                               showDialog(
+                                 context: context,
+                                 builder: (ctx) => AlertDialog(
+                                   title: const Text("Delete Permanently?"),
+                                   content: const Text("This cannot be undone. All documents and data will be removed."),
+                                   actions: [
+                                     TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                                     TextButton(
+                                       onPressed: () {
+                                         provider.deleteWarranty(item.id);
+                                         Navigator.pop(ctx);
+                                       },
+                                       child: const Text("Delete", style: TextStyle(color: AppTheme.statusExpiredText)),
+                                     ),
+                                   ],
+                                 ),
+                               );
                             },
                           );
                         },

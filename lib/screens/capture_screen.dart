@@ -535,11 +535,27 @@ class _CaptureScreenState extends State<CaptureScreen> {
                                       top: 4,
                                       right: 4,
                                       child: InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            _additionalImages.removeAt(index);
-                                          });
-                                        },
+                                          onTap: () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (ctx) => AlertDialog(
+                                                title: const Text("Remove Document?"),
+                                                content: const Text("This will remove the document from this warranty."),
+                                                actions: [
+                                                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        _additionalImages.removeAt(index);
+                                                      });
+                                                      Navigator.pop(ctx);
+                                                    },
+                                                    child: const Text("Remove", style: TextStyle(color: Colors.red)),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
                                         child: Container(
                                           padding: const EdgeInsets.all(4),
                                           decoration: BoxDecoration(
