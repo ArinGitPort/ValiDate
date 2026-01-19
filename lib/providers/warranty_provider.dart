@@ -1,49 +1,80 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../models/warranty_item.dart';
 import '../models/activity_log.dart';
 import '../services/notification_service.dart';
-import 'package:uuid/uuid.dart';
+import '../services/sync_service.dart';
 
 class WarrantyProvider with ChangeNotifier {
-  late Box<WarrantyItem> _warrantyBox;
-  late Box<ActivityLog> _logBox;
+  final SupabaseClient _client = Supabase.instance.client;
+  final SyncService _syncService = SyncService();
 
-  // Cache
   List<WarrantyItem> _items = [];
   List<ActivityLog> _logs = [];
-
-  // Preferences
+  
   String _sortOrder = 'expiring_soon';
   String get sortOrder => _sortOrder;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  String? get _userId => _client.auth.currentUser?.id;
+
   Future<void> init() async {
     _isLoading = true;
     notifyListeners();
 
-    try {
-      _warrantyBox = await Hive.openBox<WarrantyItem>('warranties');
-      _logBox = await Hive.openBox<ActivityLog>('activity_logs');
-      _refreshData();
-    } catch (e) {
-      debugPrint("WarrantyProvider Init Error: $e");
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+    // Listen to auth changes
+    _client.auth.onAuthStateChange.listen((data) {
+      if (data.session != null) {
+        _fetchData();
+      } else {
+        _items = [];
+        _logs = [];
+        notifyListeners();
+      }
+    });
+
+    if (_userId != null) {
+      await _fetchData();
     }
+
+    _isLoading = false;
+    notifyListeners();
   }
-  
-  void _refreshData() {
-    if (_warrantyBox.isOpen) {
-      _items = _warrantyBox.values.toList();
-    }
-    if (_logBox.isOpen) {
-      // Sort logs by newest first
-      _logs = _logBox.values.toList()..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+  Future<void> _fetchData() async {
+    if (_userId == null) return;
+
+    try {
+      // Fetch warranties
+      final warrantyResponse = await _client
+          .from('warranties')
+          .select()
+          .eq('user_id', _userId!)
+          .order('created_at', ascending: false);
+
+      _items = (warrantyResponse as List)
+          .map((json) => WarrantyItem.fromJson(json))
+          .toList();
+
+      // Fetch logs
+      final logResponse = await _client
+          .from('activity_logs')
+          .select()
+          .eq('user_id', _userId!)
+          .order('created_at', ascending: false)
+          .limit(50);
+
+      _logs = (logResponse as List)
+          .map((json) => ActivityLog.fromJson(json))
+          .toList();
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('WarrantyProvider: Error fetching data: $e');
     }
   }
 
@@ -54,24 +85,24 @@ class WarrantyProvider with ChangeNotifier {
   List<WarrantyItem> get activeItems {
     final items = _items.where((item) => !item.isArchived).toList();
     
-      switch (_sortOrder) {
-        case 'purchase_newest':
-          items.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
-          break;
-        case 'purchase_oldest':
-          items.sort((a, b) => a.purchaseDate.compareTo(b.purchaseDate));
-          break;
-        case 'name_az':
-          items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-          break;
-        case 'name_za':
-          items.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
-          break;
-        case 'expiring_soon':
-        default:
-          items.sort((a, b) => a.daysRemaining.compareTo(b.daysRemaining));
-          break;
-      }
+    switch (_sortOrder) {
+      case 'purchase_newest':
+        items.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
+        break;
+      case 'purchase_oldest':
+        items.sort((a, b) => a.purchaseDate.compareTo(b.purchaseDate));
+        break;
+      case 'name_az':
+        items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case 'name_za':
+        items.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        break;
+      case 'expiring_soon':
+      default:
+        items.sort((a, b) => a.daysRemaining.compareTo(b.daysRemaining));
+        break;
+    }
     
     return items;
   }
@@ -89,92 +120,89 @@ class WarrantyProvider with ChangeNotifier {
   int get expiringCount => expiringSoonItems.length;
 
   Future<void> addWarranty(WarrantyItem item) async {
-    await _warrantyBox.add(item);
-    
-    // Notifications
-    await NotificationService().scheduleWarrantyNotification(
-      itemId: item.id,
-      itemName: item.name,
-      expiryDate: item.expiryDate,
-      enabled: item.notificationsEnabled ?? true,
-    );
+    if (_userId == null) return;
 
-    await _addLog("added", "Added ${item.name} to vault", itemId: item.id);
-    _refreshData();
-    notifyListeners();
+    try {
+      // Upload image if exists
+      String? imageUrl;
+      if (item.imageUrl != null && item.imageUrl!.isNotEmpty && !item.imageUrl!.startsWith('http')) {
+        imageUrl = await _syncService.uploadImage(item.imageUrl!);
+      }
+
+      final newItem = item.copyWith(
+        id: const Uuid().v4(),
+        userId: _userId!,
+        imageUrl: imageUrl,
+      );
+
+      await _client.from('warranties').insert(newItem.toJson());
+      
+      // Notifications
+      await NotificationService().scheduleWarrantyNotification(
+        itemId: newItem.id,
+        itemName: newItem.name,
+        expiryDate: newItem.expiryDate,
+        enabled: newItem.notificationsEnabled,
+      );
+
+      await _addLog("added", "Added ${newItem.name} to vault", itemId: newItem.id);
+      await _fetchData();
+    } catch (e) {
+      debugPrint('WarrantyProvider: Error adding warranty: $e');
+      rethrow;
+    }
   }
 
   Future<void> updateWarranty(WarrantyItem item) async {
-    // Hive objects can save themselves if they are in a box
-    await item.save(); 
+    try {
+      await _client.from('warranties').update(item.toJson()).eq('id', item.id);
+      
+      await NotificationService().scheduleWarrantyNotification(
+        itemId: item.id,
+        itemName: item.name,
+        expiryDate: item.expiryDate,
+        enabled: item.notificationsEnabled,
+      );
 
-    // Update Notifications
-    await NotificationService().scheduleWarrantyNotification(
-      itemId: item.id,
-      itemName: item.name,
-      expiryDate: item.expiryDate,
-      enabled: item.notificationsEnabled ?? true,
-    );
-
-    await _addLog("updated", "Updated details for ${item.name}", itemId: item.id);
-    _refreshData();
-    notifyListeners();
+      await _addLog("updated", "Updated ${item.name}", itemId: item.id);
+      await _fetchData();
+    } catch (e) {
+      debugPrint('WarrantyProvider: Error updating warranty: $e');
+      rethrow;
+    }
   }
 
   Future<void> deleteWarranty(String id) async {
-    final item = _items.firstWhere((e) => e.id == id, orElse: () => WarrantyItem(id: '0', name: 'Unknown', storeName: '', purchaseDate: DateTime.now(), warrantyPeriodInMonths: 0, category: ''));
-    
-    // Standard ID compare, or check if it's the Hive key?
-    // Usually item.delete() works if referenced from box.
-    // If we only have ID, we need to find it in the box.
-    
-    final itemInBox = _items.firstWhere((e) => e.id == id);
-    await itemInBox.delete();
-
-    await _addLog("deleted", "Deleted ${item.name} permanently", itemId: id);
-    _refreshData();
-    notifyListeners();
-  }
-  
-  Future<void> toggleArchive(String id, bool archive) async {
-    final item = _items.firstWhere((e) => e.id == id);
-    // We can't assign to final field? 
-    // Ah, WarrantyItem fields were made final in previous steps?
-    // Checking previous VIEW: yes, fields are final. 
-    // Wait, Hive objects usually need mutable fields to be updated via setters or we replace the object.
-    // Since I can't mutate `isArchived` if it's final... I have to create a copy or "put" at the key.
-    
-    // But `WarrantyItem` structure I just wrote: fields ARE final.
-    // Hive requires re-putting the object if fields are final.
-    
-    // Let's create a copy
-    final newItem = WarrantyItem(
-      id: item.id,
-      name: item.name,
-      storeName: item.storeName,
-      purchaseDate: item.purchaseDate,
-      warrantyPeriodInMonths: item.warrantyPeriodInMonths,
-      serialNumber: item.serialNumber,
-      category: item.category,
-      imagePath: item.imagePath,
-      isArchived: archive, // Changed
-      notificationsEnabled: item.notificationsEnabled,
-      additionalDocuments: item.additionalDocuments,
-      firebaseId: item.firebaseId,
-      remoteImageUrl: item.remoteImageUrl,
-    );
-    
-    // To replace in Hive using extension: we need the key.
-    // item.key might give us the key.
-    if (item.isInBox) {
-       await _warrantyBox.put(item.key, newItem);
+    try {
+      final item = _items.firstWhere((e) => e.id == id);
+      
+      // Delete image from storage
+      if (item.imageUrl != null) {
+        await _syncService.deleteImage(item.imageUrl);
+      }
+      
+      await _client.from('warranties').delete().eq('id', id);
+      await _addLog("deleted", "Deleted ${item.name}", itemId: id);
+      await _fetchData();
+    } catch (e) {
+      debugPrint('WarrantyProvider: Error deleting warranty: $e');
+      rethrow;
     }
-    
-    final action = archive ? "archived" : "unarchived";
-    final desc = archive ? "Moved ${item.name} to archive" : "Restored ${item.name} from archive";
-    await _addLog(action, desc, itemId: id);
-    _refreshData();
-    notifyListeners();
+  }
+
+  Future<void> toggleArchive(String id, bool archive) async {
+    try {
+      final item = _items.firstWhere((e) => e.id == id);
+      
+      await _client.from('warranties').update({'is_archived': archive}).eq('id', id);
+      
+      final action = archive ? "archived" : "unarchived";
+      final desc = archive ? "Moved ${item.name} to archive" : "Restored ${item.name} from archive";
+      await _addLog(action, desc, itemId: id);
+      await _fetchData();
+    } catch (e) {
+      debugPrint('WarrantyProvider: Error toggling archive: $e');
+    }
   }
 
   // --- Utils ---
@@ -185,17 +213,14 @@ class WarrantyProvider with ChangeNotifier {
   }
 
   Future<String> get storageUsage async {
-    // Basic stub
-    return "Local Storage";
+    return "Supabase Cloud";
   }
 
   Future<void> cleanUpExpired() async {
     final expired = _items.where((e) => e.isExpired && !e.isLifetime).toList();
     for (var item in expired) {
-      await item.delete();
+      await deleteWarranty(item.id);
     }
-    _refreshData();
-    notifyListeners();
   }
 
   // --- Logs ---
@@ -203,17 +228,24 @@ class WarrantyProvider with ChangeNotifier {
   List<ActivityLog> get logs => _logs;
 
   Future<void> _addLog(String action, String description, {String? itemId}) async {
-    final log = ActivityLog(
-      id: const Uuid().v4(),
-      actionType: action,
-      description: description,
-      timestamp: DateTime.now(),
-      relatedItemId: itemId,
-    );
-    await _logBox.add(log);
-    _refreshData(); // update local list
+    if (_userId == null) return;
+    
+    try {
+      final log = ActivityLog(
+        id: const Uuid().v4(),
+        userId: _userId!,
+        actionType: action,
+        description: description,
+        timestamp: DateTime.now(),
+        relatedItemId: itemId,
+      );
+      
+      await _client.from('activity_logs').insert(log.toJson());
+    } catch (e) {
+      debugPrint('WarrantyProvider: Error adding log: $e');
+    }
   }
-  
+
   // Search
   List<WarrantyItem> searchActive(String query) {
     if (query.isEmpty) return activeItems;
@@ -224,12 +256,29 @@ class WarrantyProvider with ChangeNotifier {
   }
 
   Future<void> resetAccount() async {
-    // Clear all local data
-    await _warrantyBox.clear();
-    await _logBox.clear();
-    
-    await _addLog("reset", "Factory reset performed on device"); // Will be the only log
-    _refreshData();
-    notifyListeners();
+    if (_userId == null) return;
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Delete all warranties and their images
+      for (var item in _items) {
+        if (item.imageUrl != null) {
+          await _syncService.deleteImage(item.imageUrl);
+        }
+      }
+
+      await _client.from('warranties').delete().eq('user_id', _userId!);
+      await _client.from('activity_logs').delete().eq('user_id', _userId!);
+
+      await _fetchData();
+    } catch (e) {
+      debugPrint('WarrantyProvider: Error resetting account: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

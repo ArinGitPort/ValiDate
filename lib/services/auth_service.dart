@@ -1,58 +1,37 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _client = Supabase.instance.client;
 
-  // Auth state stream
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  User? get currentUser => _client.auth.currentUser;
+  
+  Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
-  // Current user
-  User? get currentUser => _auth.currentUser;
-
-  // Sign in with email and password
-  Future<UserCredential?> signIn(String email, String password) async {
-    try {
-      return await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
-    }
+  Future<AuthResponse> signIn({
+    required String email,
+    required String password,
+  }) async {
+    return await _client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
   }
 
-  // Register with email and password
-  Future<UserCredential?> signUp(String email, String password) async {
-    try {
-      return await _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
-    }
+  Future<AuthResponse> signUp({
+    required String email,
+    required String password,
+  }) async {
+    return await _client.auth.signUp(
+      email: email,
+      password: password,
+    );
   }
 
-  // Sign out
   Future<void> signOut() async {
-    await _auth.signOut();
+    await _client.auth.signOut();
   }
-
-  // Handle Firebase Auth exceptions
-  String _handleAuthException(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'weak-password':
-        return 'The password is too weak.';
-      case 'email-already-in-use':
-        return 'An account already exists for this email.';
-      case 'user-not-found':
-        return 'No user found for this email.';
-      case 'wrong-password':
-        return 'Incorrect password.';
-      case 'invalid-email':
-        return 'The email address is invalid.';
-      default:
-        return e.message ?? 'An error occurred. Please try again.';
-    }
+  
+  Future<void> resetPassword(String email) async {
+    await _client.auth.resetPasswordForEmail(email);
   }
 }

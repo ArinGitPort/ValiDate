@@ -1,29 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/warranty_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'models/warranty_item.dart';
-import 'models/activity_log.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Hive
-  await Hive.initFlutter();
-  Hive.registerAdapter(WarrantyItemAdapter());
-  Hive.registerAdapter(ActivityLogAdapter());
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: 'https://vlkawfpwyjxlcmczilad.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsa2F3ZnB3eWp4bGNtY3ppbGFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4MTM2MjgsImV4cCI6MjA4NDM4OTYyOH0.vnArnJe4YrKrDEgpTZJ0KGhvg56gK1WcVWTfqOwCqpE',
+  );
   
   // Initialize Notifications & Timezones
   await NotificationService().initialize();
-
-  // Initialize Firebase (Only for Auth)
-  await Firebase.initializeApp();
 
   runApp(const ValiDateApp());
 }
@@ -33,19 +27,13 @@ class ValiDateApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => WarrantyProvider()..init(), 
-          // .init() opens the box.
-        ),
-      ],
+    return ChangeNotifierProvider(
+      create: (_) => WarrantyProvider()..init(),
       child: MaterialApp(
         title: 'ValiDate',
         theme: AppTheme.lightTheme,
-        themeMode: ThemeMode.light,
-        home: const SplashScreen(),
         debugShowCheckedModeBanner: false,
+        home: const SplashScreen(),
       ),
     );
   }

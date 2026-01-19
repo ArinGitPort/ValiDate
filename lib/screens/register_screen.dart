@@ -41,8 +41,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       await _authService.signUp(
-        _emailController.text,
-        _passwordController.text,
+        email: _emailController.text,
+        password: _passwordController.text,
       );
       
       if (mounted) {

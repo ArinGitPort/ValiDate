@@ -9,7 +9,7 @@ import '../widgets/page_header.dart';
 import '../services/pdf_service.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -110,7 +110,7 @@ class SettingsScreen extends StatelessWidget {
                       _buildInfoTile(
                          icon: LucideIcons.user,
                          title: "Email",
-                         value: FirebaseAuth.instance.currentUser?.email ?? "Not logged in",
+                         value: Supabase.instance.client.auth.currentUser?.email ?? "Not logged in",
                       ),
 
                       const SizedBox(height: 32),

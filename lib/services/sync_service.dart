@@ -1,51 +1,61 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as path;
+import 'package:uuid/uuid.dart';
 
 class SyncService {
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-  final Connectivity _connectivity = Connectivity();
+  final SupabaseClient _client = Supabase.instance.client;
+  static const String _bucketName = 'warranty-images';
 
-  /// Check if device is online
-  Future<bool> isOnline() async {
-    final result = await _connectivity.checkConnectivity();
-    return result != ConnectivityResult.none;
-  }
-
-  /// Get current user ID
-  String? get _userId => FirebaseAuth.instance.currentUser?.uid;
-
-  /// Upload image to Firebase Storage
-  /// Returns the download URL or null if failed
-  Future<String?> uploadImage(String imagePath, String itemId) async {
-    final uid = _userId;
-    if (uid == null) return null;
-    
+  /// Upload an image to Supabase Storage
+  Future<String?> uploadImage(String localPath) async {
     try {
-      final file = File(imagePath);
-      if (await file.exists()) {
-        final fileName = '${itemId}_${path.basename(imagePath)}';
-        final ref = _storage.ref('users/$uid/receipts/$fileName');
-        
-        await ref.putFile(file);
-        return await ref.getDownloadURL();
+      final file = File(localPath);
+      if (!await file.exists()) {
+        return null;
       }
+
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final extension = path.extension(localPath);
+      final fileName = '${const Uuid().v4()}$extension';
+      final storagePath = '$userId/$fileName';
+
+      await _client.storage.from(_bucketName).upload(
+        storagePath,
+        file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
+
+      // Get public URL
+      final publicUrl = _client.storage.from(_bucketName).getPublicUrl(storagePath);
+      return publicUrl;
     } catch (e) {
       debugPrint('SyncService: Image upload failed: $e');
+      return null;
     }
-    return null;
   }
 
-  /// Delete image from Firebase Storage
+  /// Delete an image from Supabase Storage
   Future<void> deleteImage(String? imageUrl) async {
-    if (imageUrl == null) return;
+    if (imageUrl == null || imageUrl.isEmpty) return;
+
     try {
-      await _storage.refFromURL(imageUrl).delete();
+      // Extract path from URL
+      final uri = Uri.parse(imageUrl);
+      final pathSegments = uri.pathSegments;
+      
+      // Find index after 'warranty-images' in path
+      final bucketIndex = pathSegments.indexOf(_bucketName);
+      if (bucketIndex == -1 || bucketIndex >= pathSegments.length - 1) return;
+      
+      final storagePath = pathSegments.sublist(bucketIndex + 1).join('/');
+      
+      await _client.storage.from(_bucketName).remove([storagePath]);
     } catch (e) {
-      debugPrint('SyncService: Image delete failed (non-critical): $e');
+      debugPrint('SyncService: Image delete failed: $e');
     }
   }
 }

@@ -226,34 +226,33 @@ class _CaptureScreenState extends State<CaptureScreen> {
     setState(() => _isLoading = false);
   }
 
-  void _saveItem() {
+  void _saveItem() async {
     if (_formKey.currentState!.validate() && _imagePath != null && _selectedDate != null) {
       final isEditing = widget.item != null;
+      final provider = Provider.of<WarrantyProvider>(context, listen: false);
       
+      // For new items, userId will be set by the provider
       final newItem = WarrantyItem(
         id: isEditing ? widget.item!.id : const Uuid().v4(),
+        userId: isEditing ? widget.item!.userId : '', // Provider will set this
         name: _nameCtrl.text,
         storeName: _storeCtrl.text,
         purchaseDate: _selectedDate!,
         warrantyPeriodInMonths: _calculatedMonths,
         serialNumber: _serialCtrl.text,
-        // Preserve or default category. In future, add category picker.
         category: _selectedCategory, 
-        imagePath: _imagePath!,
+        imageUrl: _imagePath, // Local path - provider will upload
         notificationsEnabled: isEditing ? widget.item!.notificationsEnabled : true,
         isArchived: isEditing ? widget.item!.isArchived : false,
-        additionalDocuments: _additionalImages,
       );
-
-      final provider = Provider.of<WarrantyProvider>(context, listen: false);
       
       if (isEditing) {
-        provider.updateWarranty(newItem);
+        await provider.updateWarranty(newItem);
       } else {
-        provider.addWarranty(newItem);
+        await provider.addWarranty(newItem);
       }
       
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     } else if (_imagePath == null) {
        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Receipt image missing")));
     } else if (_selectedDate == null) {

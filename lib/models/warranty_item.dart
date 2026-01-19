@@ -1,67 +1,36 @@
-import 'package:hive/hive.dart';
-
-part 'warranty_item.g.dart';
-
-@HiveType(typeId: 0)
-class WarrantyItem extends HiveObject {
-  @HiveField(0)
+class WarrantyItem {
   final String id;
-
-  @HiveField(1)
+  final String userId;
   final String name;
-
-  @HiveField(2)
   final String storeName;
-
-  @HiveField(3)
   final DateTime purchaseDate;
-
-  @HiveField(4)
   final int warrantyPeriodInMonths;
-
-  @HiveField(5)
   final String serialNumber;
-
-  @HiveField(6)
   final String category;
-
-  @HiveField(7)
-  final String imagePath;
-
-  @HiveField(8)
+  final String? imageUrl;
   final bool isArchived;
-
-  @HiveField(9)
-  bool? notificationsEnabled;
-  
-  // Optional: We can still keep these for potential cloud usage or just ignore them in Hive
-  List<String>? additionalDocuments;
-  String? firebaseId;
-  bool isSynced;
-  String? remoteImageUrl;
+  final bool notificationsEnabled;
+  final DateTime createdAt;
 
   WarrantyItem({
     required this.id,
+    required this.userId,
     required this.name,
     required this.storeName,
     required this.purchaseDate,
     required this.warrantyPeriodInMonths,
     this.serialNumber = '',
     required this.category,
-    this.imagePath = '',
+    this.imageUrl,
     this.isArchived = false,
     this.notificationsEnabled = true,
-    this.additionalDocuments,
-    this.firebaseId,
-    this.isSynced = false,
-    this.remoteImageUrl,
-  });
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
   // Calculate expiry date
   DateTime get expiryDate {
     if (warrantyPeriodInMonths == -1) {
-      // Lifetime warranty - effectively never expires
-      return DateTime(9999, 12, 31); 
+      return DateTime(9999, 12, 31); // Lifetime
     }
     return purchaseDate.add(Duration(days: warrantyPeriodInMonths * 30));
   }
@@ -70,7 +39,6 @@ class WarrantyItem extends HiveObject {
   int get daysRemaining {
     if (isLifetime) return 9999;
     final now = DateTime.now();
-    // Reset time components for accurate day calculation
     final today = DateTime(now.year, now.month, now.day);
     final expiry = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
     return expiry.difference(today).inDays;
@@ -83,42 +51,72 @@ class WarrantyItem extends HiveObject {
 
   bool get isLifetime => warrantyPeriodInMonths == -1;
 
-  // -- Helpers for Firestore (keeping them won't hurt, but Hive handles serialization via adapter) --
+  // Backward compatibility getter for UI components
+  String get imagePath => imageUrl ?? '';
+  
+  // Stub for additionalDocuments (not stored in Supabase yet)
+  List<String>? get additionalDocuments => null;
 
-  Map<String, dynamic> toMap() {
+  // Supabase JSON serialization
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'user_id': userId,
       'name': name,
-      'storeName': storeName,
-      'purchaseDate': purchaseDate.toIso8601String(),
-      'warrantyPeriodInMonths': warrantyPeriodInMonths,
-      'serialNumber': serialNumber,
+      'store_name': storeName,
+      'purchase_date': purchaseDate.toIso8601String(),
+      'warranty_period_months': warrantyPeriodInMonths,
+      'serial_number': serialNumber,
       'category': category,
-      'imagePath': imagePath,
-      'isArchived': isArchived,
-      'notificationsEnabled': notificationsEnabled,
-      'additionalDocuments': additionalDocuments,
-      // 'firebaseId': firebaseId, // Don't upload the ID as a field usually, but ok
-      'remoteImageUrl': remoteImageUrl,
+      'image_url': imageUrl,
+      'is_archived': isArchived,
+      'notifications_enabled': notificationsEnabled,
     };
   }
 
-  factory WarrantyItem.fromMap(Map<String, dynamic> map, String id) {
+  factory WarrantyItem.fromJson(Map<String, dynamic> json) {
     return WarrantyItem(
-      id: map['id'] ?? id, // fallback
-      name: map['name'] ?? '',
-      storeName: map['storeName'] ?? '',
-      purchaseDate: DateTime.tryParse(map['purchaseDate'] ?? '') ?? DateTime.now(),
-      warrantyPeriodInMonths: map['warrantyPeriodInMonths'] ?? 0,
-      serialNumber: map['serialNumber'] ?? '',
-      category: map['category'] ?? '',
-      imagePath: map['imagePath'] ?? '',
-      isArchived: map['isArchived'] ?? false,
-      notificationsEnabled: map['notificationsEnabled'],
-      additionalDocuments: map['additionalDocuments'] != null ? List<String>.from(map['additionalDocuments']) : null,
-      firebaseId: id,
-      isSynced: true,
+      id: json['id'],
+      userId: json['user_id'],
+      name: json['name'] ?? '',
+      storeName: json['store_name'] ?? '',
+      purchaseDate: DateTime.parse(json['purchase_date']),
+      warrantyPeriodInMonths: json['warranty_period_months'] ?? 0,
+      serialNumber: json['serial_number'] ?? '',
+      category: json['category'] ?? '',
+      imageUrl: json['image_url'],
+      isArchived: json['is_archived'] ?? false,
+      notificationsEnabled: json['notifications_enabled'] ?? true,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+    );
+  }
+
+  WarrantyItem copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    String? storeName,
+    DateTime? purchaseDate,
+    int? warrantyPeriodInMonths,
+    String? serialNumber,
+    String? category,
+    String? imageUrl,
+    bool? isArchived,
+    bool? notificationsEnabled,
+  }) {
+    return WarrantyItem(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      storeName: storeName ?? this.storeName,
+      purchaseDate: purchaseDate ?? this.purchaseDate,
+      warrantyPeriodInMonths: warrantyPeriodInMonths ?? this.warrantyPeriodInMonths,
+      serialNumber: serialNumber ?? this.serialNumber,
+      category: category ?? this.category,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isArchived: isArchived ?? this.isArchived,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      createdAt: createdAt,
     );
   }
 }
-
