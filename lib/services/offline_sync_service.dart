@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -64,6 +67,35 @@ class OfflineSyncService {
     }
   }
 
+  // --- Manual Download ---
+  
+  Future<bool> downloadAssets(WarrantyItem item) async {
+    // Only proceed if there is a remote URL and no local path
+    if (item.imageUrl == null || !item.imageUrl!.startsWith('http')) return true;
+    if (item.localImagePath != null && File(item.localImagePath!).existsSync()) return true;
+
+    try {
+      final response = await http.get(Uri.parse(item.imageUrl!));
+      if (response.statusCode == 200) {
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = '${item.id}_offline_cache.jpg'; 
+        final file = File('${appDir.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes);
+
+        // Update Local DB
+        // We preserve the existing isDirty state
+        final newItem = item.copyWith(localImagePath: file.path);
+        await _db.insertWarranty(newItem, isDirty: item.isDirty);
+        
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('OfflineSyncService: Download failed for ${item.name}: $e');
+      return false;
+    }
+  }
+
   // --- Specific Sync Handlers ---
 
   Future<bool> _syncInsertWarranty(Map<String, dynamic> payload) async {
@@ -84,12 +116,7 @@ class OfflineSyncService {
       // 2. Insert to Supabase
       await _client.from('warranties').insert(payload);
       
-      // 3. Update local record with definitive data (especially URL)
-      // Note: We should probably fetch the inserted record to be sure, 
-      // but payload with updated URL is good enough for now.
-      // Or we can just update the image_url locally.
-      
-      // Construct WarrantyItem to update local DB properly
+      // 3. Update local record with definitive data
       final item = WarrantyItem.fromJson(payload);
       await _db.insertWarranty(item, isDirty: false);
       

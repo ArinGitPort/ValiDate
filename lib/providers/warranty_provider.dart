@@ -28,6 +28,10 @@ class WarrantyProvider with ChangeNotifier {
   // Expose sync status
   bool get isSyncing => _offlineSyncService.isSyncing.value;
 
+  // Track downloading items
+  final Set<String> _downloadingItems = {};
+  bool isDownloading(String id) => _downloadingItems.contains(id);
+
   String? get _userId => _client.auth.currentUser?.id;
 
   Future<void> init() async {
@@ -408,6 +412,28 @@ class WarrantyProvider with ChangeNotifier {
       rethrow;
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> downloadOfflineAssets(String id) async {
+    try {
+       final index = _items.indexWhere((e) => e.id == id);
+       if (index == -1) return;
+       final item = _items[index];
+
+       _downloadingItems.add(id);
+       notifyListeners();
+
+       final success = await _offlineSyncService.downloadAssets(item);
+       
+       if (success) {
+         await _fetchData(); // Reload to get local path
+       }
+    } catch (e) {
+      debugPrint("Provider: Download failed $e");
+    } finally {
+      _downloadingItems.remove(id);
       notifyListeners();
     }
   }

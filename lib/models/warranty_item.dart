@@ -9,6 +9,7 @@ class WarrantyItem {
   final String category;
   final List<String> additionalDocuments;
   final String? imageUrl;
+  final String? localImagePath; // Local path for downloaded/cached remote images
   final bool isArchived;
   final bool notificationsEnabled;
   final DateTime createdAt;
@@ -24,6 +25,7 @@ class WarrantyItem {
     this.serialNumber = '',
     required this.category,
     this.imageUrl,
+    this.localImagePath,
     this.additionalDocuments = const [],
     this.isArchived = false,
     this.notificationsEnabled = true,
@@ -56,7 +58,12 @@ class WarrantyItem {
   bool get isLifetime => warrantyPeriodInMonths == -1 || warrantyPeriodInMonths >= 9999;
 
   // Backward compatibility getter for UI components
-  String get imagePath => imageUrl ?? '';
+  // Prefer local path if available (for manual downloads or offline creates)
+  // Fallback to imageUrl (remote)
+  String get imagePath {
+    if (localImagePath != null && localImagePath!.isNotEmpty) return localImagePath!;
+    return imageUrl ?? '';
+  }
   
   // Supabase JSON serialization
   Map<String, dynamic> toJson() {
@@ -93,6 +100,7 @@ class WarrantyItem {
       serialNumber: json['serial_number'] ?? '',
       category: json['category'] ?? '',
       imageUrl: json['image_url'],
+      localImagePath: json['local_image_path'], // Only from local DB
       additionalDocuments: docs,
       isArchived: json['is_archived'] ?? false,
       notificationsEnabled: json['notifications_enabled'] ?? true,
@@ -111,6 +119,7 @@ class WarrantyItem {
     String? serialNumber,
     String? category,
     String? imageUrl,
+    String? localImagePath,
     List<String>? additionalDocuments,
     bool? isArchived,
     bool? notificationsEnabled,
@@ -126,6 +135,7 @@ class WarrantyItem {
       serialNumber: serialNumber ?? this.serialNumber,
       category: category ?? this.category,
       imageUrl: imageUrl ?? this.imageUrl,
+      localImagePath: localImagePath ?? this.localImagePath,
       additionalDocuments: additionalDocuments ?? this.additionalDocuments,
       isArchived: isArchived ?? this.isArchived,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,

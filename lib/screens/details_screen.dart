@@ -39,6 +39,30 @@ class DetailsScreen extends StatelessWidget {
         ),
         title: const Text('Warranty Details'),
         centerTitle: true,
+        actions: [
+          if (provider.isDownloading(item.id))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(right: 16),
+                child: SizedBox(
+                  width: 20, 
+                  height: 20, 
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryBrand)
+                ),
+              ),
+            )
+          else if (item.localImagePath != null)
+             const Padding(
+               padding: EdgeInsets.only(right: 16),
+               child: Icon(LucideIcons.circle_check, color: AppTheme.success, size: 20),
+             )
+          else if (item.imageUrl != null && item.imageUrl!.startsWith('http'))
+             IconButton(
+               icon: const Icon(LucideIcons.cloud_download, size: 22),
+               tooltip: "Download for Offline",
+               onPressed: () => provider.downloadOfflineAssets(item.id),
+             ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(

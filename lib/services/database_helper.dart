@@ -23,9 +23,16 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
+  }
+
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE warranties ADD COLUMN local_image_path TEXT');
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -48,12 +55,54 @@ CREATE TABLE warranties (
   serial_number $textNullable,
   category $textType,
   image_url $textNullable,
+  local_image_path $textNullable,
   is_archived $boolType,
   notifications_enabled $boolType,
   created_at $textNullable,
   is_dirty $boolType DEFAULT 0
 )
     ''');
+// ... (rest of createDB)
+
+// ...
+
+  Map<String, dynamic> _warrantyToMap(WarrantyItem item) {
+    return {
+      'id': item.id,
+      'user_id': item.userId,
+      'name': item.name,
+      'store_name': item.storeName,
+      'purchase_date': item.purchaseDate.toIso8601String(),
+      'warranty_period_months': item.warrantyPeriodInMonths,
+      'serial_number': item.serialNumber,
+      'category': item.category,
+      'image_url': item.imageUrl,
+      'local_image_path': item.localImagePath,
+      'is_archived': item.isArchived ? 1 : 0,
+      'notifications_enabled': item.notificationsEnabled ? 1 : 0,
+      'created_at': item.createdAt?.toIso8601String(),
+    };
+  }
+
+  WarrantyItem _mapToWarranty(Map<String, dynamic> map, List<String> docs) {
+    return WarrantyItem(
+      id: map['id'],
+      userId: map['user_id'],
+      name: map['name'],
+      storeName: map['store_name'],
+      purchaseDate: DateTime.parse(map['purchase_date']),
+      warrantyPeriodInMonths: map['warranty_period_months'],
+      serialNumber: map['serial_number'] ?? '',
+      category: map['category'],
+      imageUrl: map['image_url'],
+      localImagePath: map['local_image_path'],
+      additionalDocuments: docs,
+      isArchived: (map['is_archived'] as int) == 1,
+      notificationsEnabled: (map['notifications_enabled'] as int) == 1,
+      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at']) : null,
+      isDirty: (map['is_dirty'] as int) == 1,
+    );
+  }
 
     // Activity Logs Table
     await db.execute('''
@@ -196,6 +245,7 @@ CREATE TABLE sync_queue (
       'serial_number': item.serialNumber,
       'category': item.category,
       'image_url': item.imageUrl,
+      'local_image_path': item.localImagePath,
       'is_archived': item.isArchived ? 1 : 0,
       'notifications_enabled': item.notificationsEnabled ? 1 : 0,
       'created_at': item.createdAt?.toIso8601String(),
@@ -213,10 +263,12 @@ CREATE TABLE sync_queue (
       serialNumber: map['serial_number'] ?? '',
       category: map['category'],
       imageUrl: map['image_url'],
+      localImagePath: map['local_image_path'],
       additionalDocuments: docs,
       isArchived: (map['is_archived'] as int) == 1,
       notificationsEnabled: (map['notifications_enabled'] as int) == 1,
       createdAt: map['created_at'] != null ? DateTime.parse(map['created_at']) : null,
+      isDirty: (map['is_dirty'] as int) == 1,
     );
   }
   

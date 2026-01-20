@@ -89,7 +89,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
     _additionalImages = List.from(item.additionalDocuments);
 
     // Populate Warranty Period
-    if (item.warrantyPeriodInMonths > 1000) {
+    if (item.warrantyPeriodInMonths > 1000 || item.warrantyPeriodInMonths == -1) {
       _isLifetime = true;
       _periodValueCtrl.text = "";
     } else {

@@ -78,7 +78,6 @@ class WarrantyCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                children: [
                    // Left: Category
                   Row(
                     children: [
