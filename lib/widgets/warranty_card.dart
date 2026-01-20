@@ -78,6 +78,7 @@ class WarrantyCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                children: [
                    // Left: Category
                   Row(
                     children: [
@@ -98,16 +99,19 @@ class WarrantyCard extends StatelessWidget {
                   // Right: Status
                   Row(
                     children: [
-                      if (isExpired) ...[
+                      if (item.isDirty) ...[
+                         const Icon(LucideIcons.cloud_upload, size: 14, color: AppTheme.secondaryText),
+                         const SizedBox(width: 6),
+                      ] else if (isExpired) ...[
                         Icon(statusIcon, size: 14, color: statusText),
                         const SizedBox(width: 6),
                       ],
                       Text(
-                        statusLabel,
+                        item.isDirty ? "WAITING SYNC" : statusLabel,
                         style: GoogleFonts.manrope(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: statusText,
+                          color: item.isDirty ? AppTheme.secondaryText : statusText,
                           letterSpacing: 0.5,
                         ),
                       ),

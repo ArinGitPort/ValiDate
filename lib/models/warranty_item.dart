@@ -12,6 +12,7 @@ class WarrantyItem {
   final bool isArchived;
   final bool notificationsEnabled;
   final DateTime createdAt;
+  final bool isDirty; // New field for offline sync status
 
   WarrantyItem({
     required this.id,
@@ -27,6 +28,7 @@ class WarrantyItem {
     this.isArchived = false,
     this.notificationsEnabled = true,
     DateTime? createdAt,
+    this.isDirty = false,
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Calculate expiry date
@@ -95,6 +97,7 @@ class WarrantyItem {
       isArchived: json['is_archived'] ?? false,
       notificationsEnabled: json['notifications_enabled'] ?? true,
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      isDirty: json['is_dirty'] == 1 || json['is_dirty'] == true, // Handle SQLite (1) and generic true
     );
   }
 
@@ -111,6 +114,7 @@ class WarrantyItem {
     List<String>? additionalDocuments,
     bool? isArchived,
     bool? notificationsEnabled,
+    bool? isDirty,
   }) {
     return WarrantyItem(
       id: id ?? this.id,
@@ -126,6 +130,7 @@ class WarrantyItem {
       isArchived: isArchived ?? this.isArchived,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       createdAt: createdAt,
+      isDirty: isDirty ?? this.isDirty,
     );
   }
 }

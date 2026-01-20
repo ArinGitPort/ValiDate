@@ -55,6 +55,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: AppTheme.white,
                         child: const Divider(height: 1, thickness: 1, color: AppTheme.dividerColor),
                       ),
+                      if (provider.isSyncing)
+                        Container(
+                          width: double.infinity,
+                          color: AppTheme.primaryBrand.withValues(alpha: 0.1),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 12, 
+                                  height: 12, 
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryBrand)
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Syncing changes...",
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primaryBrand,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       Container(
                         color: AppTheme.white,
                         padding: const EdgeInsets.all(24.0),
