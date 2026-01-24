@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'main_layout.dart';
 import 'login_screen.dart';
@@ -36,18 +37,43 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _controller.forward();
 
     // Navigate based on auth state after delay
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        final user = Supabase.instance.client.auth.currentUser;
-        
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => user != null ? const MainLayout() : const LoginScreen(),
-          ),
-        );
-      }
-    });
+    Future.delayed(const Duration(seconds: 3), () => _checkAuthAndNavigate());
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    if (!mounted) return;
+
+    final user = Supabase.instance.client.auth.currentUser;
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (!mounted) return; // Check again after await
+    
+    final isOffline = connectivityResult.contains(ConnectivityResult.none);
+
+    if (user != null) {
+      // User has a persisted session - allow access even if offline
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainLayout()),
+      );
+    } else if (isOffline) {
+      // No session AND offline - show a message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You are offline. Please connect to the internet to log in.'),
+          duration: Duration(seconds: 5),
+        ),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    } else {
+      // Online but no session - go to login
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
   }
 
   @override

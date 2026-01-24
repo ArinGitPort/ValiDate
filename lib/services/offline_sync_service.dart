@@ -100,26 +100,47 @@ class OfflineSyncService {
 
   Future<bool> _syncInsertWarranty(Map<String, dynamic> payload) async {
     try {
+      debugPrint('Sync: Inserting ${payload['id']} - ${payload['name']}');
+      
       // 1. Handle Image Upload if local path
       String? imageUrl = payload['image_url'];
+      String? localPath;
+
       if (imageUrl != null && !imageUrl.startsWith('http')) {
-        final uploadedUrl = await _syncService.uploadImage(imageUrl);
-        if (uploadedUrl != null) {
-          imageUrl = uploadedUrl;
-          payload['image_url'] = imageUrl; // Update payload
+        localPath = imageUrl; // Capture local path
+        if (File(localPath).existsSync()) {
+            final uploadedUrl = await _syncService.uploadImage(localPath);
+            if (uploadedUrl != null) {
+              imageUrl = uploadedUrl;
+              payload['image_url'] = imageUrl; 
+            } else {
+              debugPrint('Sync Error: Image upload failed for $localPath');
+              return false; // Retry later
+            }
+        } else {
+            debugPrint('Sync Warning: Local file missing at $localPath, skipping upload');
+            payload['image_url'] = null; // Can't upload, so prevent sending local path to server
         }
       }
       
-      // Remove local-only fields if any
+      // Remove local-only fields
       payload.remove('is_dirty');
+      // local_image_path isn't in payload usually, but good to be safe
+      payload.remove('local_image_path'); 
       
       // 2. Insert to Supabase
       await _client.from('warranties').insert(payload);
       
-      // 3. Update local record with definitive data
-      final item = WarrantyItem.fromJson(payload);
-      await _db.insertWarranty(item, isDirty: false);
+      // 3. Update local record
+      // We explicitly set isDirty: false. 
+      // AND we ensure the local_image_path is preserved so Manual Download isn't needed immediately.
+      var item = WarrantyItem.fromJson(payload);
+      if (localPath != null) {
+        item = item.copyWith(localImagePath: localPath);
+      }
       
+      await _db.insertWarranty(item, isDirty: false);
+      debugPrint('Sync: Insert Success');
       return true;
     } catch (e) {
       debugPrint('Sync Insert Failed: $e');
@@ -129,25 +150,42 @@ class OfflineSyncService {
 
   Future<bool> _syncUpdateWarranty(Map<String, dynamic> payload) async {
      try {
-       // 1. Handle Image Upload if local path
+       debugPrint('Sync: Updating ${payload['id']}');
+
+       // 1. Handle Image Upload
       String? imageUrl = payload['image_url'];
+      String? localPath;
+
       if (imageUrl != null && !imageUrl.startsWith('http')) {
-        final uploadedUrl = await _syncService.uploadImage(imageUrl);
-        if (uploadedUrl != null) {
-          imageUrl = uploadedUrl;
-          payload['image_url'] = imageUrl; 
-        }
+        localPath = imageUrl;
+         if (File(localPath).existsSync()) {
+            final uploadedUrl = await _syncService.uploadImage(localPath);
+            if (uploadedUrl != null) {
+              imageUrl = uploadedUrl;
+              payload['image_url'] = imageUrl; 
+            } else {
+               debugPrint('Sync Error: Image upload failed');
+               return false;
+            }
+         } else {
+             payload['image_url'] = null; 
+         }
       }
 
       payload.remove('is_dirty');
+      payload.remove('local_image_path');
 
       // 2. Update Supabase
       await _client.from('warranties').update(payload).eq('id', payload['id']);
 
       // 3. Update local
-      final item = WarrantyItem.fromJson(payload);
+      var item = WarrantyItem.fromJson(payload);
+      if (localPath != null) {
+         item = item.copyWith(localImagePath: localPath);
+      }
+      
       await _db.insertWarranty(item, isDirty: false);
-
+      debugPrint('Sync: Update Success');
       return true;
      } catch (e) {
        debugPrint('Sync Update Failed: $e');
