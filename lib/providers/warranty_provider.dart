@@ -41,6 +41,10 @@ class WarrantyProvider with ChangeNotifier {
     // Bind sync service listener to notify UI when syncing state changes
     _offlineSyncService.isSyncing.addListener(() {
       notifyListeners();
+      // If sync just finished, reload data from local DB to reflect changes (e.g. clean dirty flags, updated URLs)
+      if (!_offlineSyncService.isSyncing.value) {
+        _fetchData();
+      }
     });
 
     // Listen to auth changes
