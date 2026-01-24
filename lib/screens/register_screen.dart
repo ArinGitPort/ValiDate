@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import 'main_layout.dart';
@@ -51,10 +52,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
           MaterialPageRoute(builder: (_) => const MainLayout()),
         );
       }
+    } on AuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          final msg = e.message;
+          if (msg.contains('SocketException') || 
+              msg.contains('Failed host lookup') || 
+              msg.contains('Connection refused') || 
+              msg.contains('ClientException') ||
+              msg.contains('Network request failed')) {
+            _errorMessage = 'No internet connection. Please check your network.';
+          } else {
+            _errorMessage = msg;
+          }
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          final msg = e.toString();
+          if (msg.contains('SocketException') || 
+              msg.contains('Failed host lookup') || 
+              msg.contains('Connection refused') || 
+              msg.contains('ClientException')) {
+            _errorMessage = 'No internet connection. Please check your network.';
+          } else {
+            _errorMessage = 'An unexpected error occurred. Please try again.';
+          }
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {

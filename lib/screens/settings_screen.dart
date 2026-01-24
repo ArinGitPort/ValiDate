@@ -415,10 +415,32 @@ class SettingsScreen extends StatelessWidget {
             (route) => false,
           );
         }
+      } on AuthException catch (e) {
+        if (context.mounted) {
+           final msg = e.message;
+           String errorText = "Sign out failed: $msg";
+           if (msg.contains('SocketException') || msg.contains('Failed host lookup') || msg.contains('ClientException')) {
+              errorText = "Network connection error. Please try again when online.";
+           }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorText)),
+          );
+        }
       } catch (e) {
         if (context.mounted) {
+          final msg = e.toString();
+          String errorText;
+          if (msg.contains('SocketException') || 
+              msg.contains('Failed host lookup') || 
+              msg.contains('Connection refused') ||
+              msg.contains('ClientException')) {
+             errorText = "Network connection error. Please try again when online.";
+          } else {
+             errorText = "An unexpected error occurred.";
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error signing out: $e")),
+            SnackBar(content: Text(errorText)),
           );
         }
       }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
@@ -42,11 +43,37 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _message = "Password reset link sent! Check your email.";
       });
       
+    } on AuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSuccess = false;
+          final msg = e.message;
+          if (msg.contains('SocketException') || 
+              msg.contains('Failed host lookup') || 
+              msg.contains('Connection refused') || 
+              msg.contains('ClientException') ||
+              msg.contains('Network request failed')) {
+            _message = 'No internet connection. Please check your network.';
+          } else {
+            _message = msg;
+          }
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isSuccess = false;
-        _message = "Failed to send reset link. Please try again.";
-      });
+      if (mounted) {
+        setState(() {
+          _isSuccess = false;
+          final msg = e.toString();
+          if (msg.contains('SocketException') || 
+              msg.contains('Failed host lookup') || 
+              msg.contains('Connection refused') || 
+              msg.contains('ClientException')) {
+            _message = 'No internet connection. Please check your network.';
+          } else {
+            _message = 'Failed to send reset link. Please try again.';
+          }
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
