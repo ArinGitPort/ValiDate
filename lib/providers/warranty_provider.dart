@@ -225,19 +225,20 @@ class WarrantyProvider with ChangeNotifier {
       
       // 3. Update UI
       // Notifications (Schedule locally regardless of sync)
-      await NotificationService().scheduleWarrantyNotification(
+      // Use unawaited to prevent blocking - let notifications schedule in background
+      unawaited(NotificationService().scheduleWarrantyNotification(
         itemId: newItem.id,
         itemName: newItem.name,
         expiryDate: newItem.expiryDate,
         enabled: newItem.notificationsEnabled,
-      );
+      ));
 
       await _addLog("added", "Added ${newItem.name} to vault", itemId: newItem.id);
       
       await _fetchData(); // Refresh UI from local DB
       
-      // 4. Trigger Sync (if online)
-      _offlineSyncService.syncPendingChanges();
+      // 4. Trigger Sync (if online) - Non-blocking
+      unawaited(_offlineSyncService.syncPendingChanges());
 
     } catch (e) {
       debugPrint('WarrantyProvider: Error adding warranty: $e');
@@ -262,19 +263,19 @@ class WarrantyProvider with ChangeNotifier {
       // 2. Queue
       await _db.addToSyncQueue('UPDATE', 'warranties', updatedItem.toJson());
 
-      // 3. UI
-      await NotificationService().scheduleWarrantyNotification(
+      // 3. UI - Non-blocking notifications
+      unawaited(NotificationService().scheduleWarrantyNotification(
         itemId: item.id,
         itemName: item.name,
         expiryDate: item.expiryDate,
         enabled: item.notificationsEnabled,
-      );
+      ));
 
       await _addLog("updated", "Updated ${item.name}", itemId: item.id);
       await _fetchData();
       
-      // 4. Sync
-      _offlineSyncService.syncPendingChanges();
+      // 4. Sync - Non-blocking
+      unawaited(_offlineSyncService.syncPendingChanges());
     } catch (e) {
       debugPrint('WarrantyProvider: Error updating warranty: $e');
       rethrow;

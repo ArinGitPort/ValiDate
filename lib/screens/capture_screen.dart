@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -244,35 +245,68 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
   void _saveItem() async {
     if (_formKey.currentState!.validate() && _imagePath != null && _selectedDate != null) {
-      final isEditing = widget.item != null;
-      final provider = Provider.of<WarrantyProvider>(context, listen: false);
+      // Show loading indicator
+      setState(() => _isLoading = true);
       
-      // For new items, userId will be set by the provider
-      final newItem = WarrantyItem(
-        id: isEditing ? widget.item!.id : const Uuid().v4(),
-        userId: isEditing ? widget.item!.userId : '', // Provider will set this
-        name: _nameCtrl.text,
-        storeName: _storeCtrl.text,
-        purchaseDate: _selectedDate!,
-        warrantyPeriodInMonths: _calculatedMonths,
-        serialNumber: _serialCtrl.text,
-        category: _selectedCategory, 
-        imageUrl: _imagePath, // Local path - provider will upload
-        additionalDocuments: _additionalImages,
-        notificationsEnabled: isEditing ? widget.item!.notificationsEnabled : true,
-        isArchived: isEditing ? widget.item!.isArchived : false,
-      );
-      
-      if (isEditing) {
-        await provider.updateWarranty(newItem);
-      } else {
-        await provider.addWarranty(
-          newItem,
-          extraDocs: _additionalImages,
+      try {
+        final isEditing = widget.item != null;
+        final provider = Provider.of<WarrantyProvider>(context, listen: false);
+        
+        // For new items, userId will be set by the provider
+        final newItem = WarrantyItem(
+          id: isEditing ? widget.item!.id : const Uuid().v4(),
+          userId: isEditing ? widget.item!.userId : '', // Provider will set this
+          name: _nameCtrl.text,
+          storeName: _storeCtrl.text,
+          purchaseDate: _selectedDate!,
+          warrantyPeriodInMonths: _calculatedMonths,
+          serialNumber: _serialCtrl.text,
+          category: _selectedCategory, 
+          imageUrl: _imagePath, // Local path - provider will upload
+          additionalDocuments: _additionalImages,
+          notificationsEnabled: isEditing ? widget.item!.notificationsEnabled : true,
+          isArchived: isEditing ? widget.item!.isArchived : false,
         );
+        
+        // Add timeout protection (30 seconds)
+        if (isEditing) {
+          await provider.updateWarranty(newItem).timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw TimeoutException('Save operation timed out');
+            },
+          );
+        } else {
+          await provider.addWarranty(
+            newItem,
+            extraDocs: _additionalImages,
+          ).timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw TimeoutException('Save operation timed out');
+            },
+          );
+        }
+        
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(isEditing ? "Warranty updated" : "Warranty saved")),
+          );
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Error saving warranty: ${e.toString()}"),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        debugPrint('Error saving warranty: $e');
       }
-      
-      if (mounted) Navigator.pop(context);
     } else if (_imagePath == null) {
        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Receipt image missing")));
     } else if (_selectedDate == null) {
@@ -579,8 +613,17 @@ class _CaptureScreenState extends State<CaptureScreen> {
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: _saveItem,
-                        child: const Text("Save Warranty"),
+                        onPressed: _isLoading ? null : _saveItem,
+                        child: _isLoading 
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text("Save Warranty"),
                       ),
                     ),
                     const SizedBox(height: 32), // Safe area
