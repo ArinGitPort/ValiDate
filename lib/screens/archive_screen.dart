@@ -4,6 +4,7 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import '../providers/warranty_provider.dart';
 import '../widgets/warranty_card.dart';
 import '../widgets/page_header.dart';
+import 'details_screen.dart'; // Import needed for DetailsScreen navigation
 
 class ArchiveScreen extends StatelessWidget {
   const ArchiveScreen({super.key});
@@ -77,22 +78,37 @@ class ArchiveScreen extends StatelessWidget {
                               child: WarrantyCard(
                                 item: item,
                                 onTap: () {
-                                   showDialog(
-                                     context: context,
-                                     builder: (ctx) => AlertDialog(
-                                       title: const Text("Restore Item?"),
-                                       actions: [
-                                         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-                                         TextButton(
-                                           onPressed: () {
-                                             provider.toggleArchive(item.id, false);
-                                             Navigator.pop(ctx);
-                                           },
-                                           child: const Text("Restore"),
-                                         ),
-                                       ],
-                                     ),
-                                   );
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => DetailsScreen(itemId: item.id)),
+                                  );
+                                },
+                                onArchive: (ctx) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (dialogCtx) => AlertDialog(
+                                      title: const Text("Restore to Vault?"),
+                                      content: const Text("This will move the warranty back to your active list."),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text("Cancel")),
+                                        TextButton(
+                                          onPressed: () async {
+                                            Navigator.pop(dialogCtx); 
+                                            await provider.toggleArchive(item.id, false);
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text("${item.name} restored")),
+                                              );
+                                            }
+                                          },
+                                          child: const Text("Restore"),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                onDelete: (ctx) {
+                                   _confirmDelete(context, provider, item);
                                 },
                               ),
                             ),
@@ -106,6 +122,29 @@ class ArchiveScreen extends StatelessWidget {
             );
           },
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WarrantyProvider provider, dynamic item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Permanently?"),
+        content: const Text("This cannot be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () {
+              provider.deleteWarranty(item.id);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("${item.name} deleted")),
+              );
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import '../providers/warranty_provider.dart';
@@ -55,6 +56,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: AppTheme.white,
                         child: const Divider(height: 1, thickness: 1, color: AppTheme.dividerColor),
                       ),
+                      if (provider.isSyncing)
+                        Container(
+                          width: double.infinity,
+                          color: AppTheme.primaryBrand.withValues(alpha: 0.1),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 12, 
+                                  height: 12, 
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryBrand)
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Syncing changes...",
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primaryBrand,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       Container(
                         color: AppTheme.white,
                         padding: const EdgeInsets.all(24.0),
@@ -132,16 +160,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               );
                             },
                             onArchive: (ctx) {
-                              provider.toggleArchive(item.id, true);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Archived"),
-                                  behavior: SnackBarBehavior.floating,
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(item.isArchived ? "Unarchive Warranty?" : "Archive Warranty?"),
+                                  content: Text(item.isArchived 
+                                    ? "This will move the warranty back to your active vault." 
+                                    : "This will move the warranty to the archive. You can restore it later."),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text("Cancel"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        provider.toggleArchive(item.id, true);
+                                        Navigator.pop(ctx);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text("Archived"),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      },
+                                      child: const Text("Archive"),
+                                    ),
+                                  ],
                                 ),
                               );
                             },
                             onDelete: (ctx) {
-                               provider.deleteWarranty(item.id);
+                               showDialog(
+                                 context: context,
+                                 builder: (ctx) => AlertDialog(
+                                   title: const Text("Delete Permanently?"),
+                                   content: const Text("This cannot be undone. All documents and data will be removed."),
+                                   actions: [
+                                     TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                                     TextButton(
+                                       onPressed: () {
+                                         provider.deleteWarranty(item.id);
+                                         Navigator.pop(ctx);
+                                       },
+                                       child: const Text("Delete", style: TextStyle(color: AppTheme.statusExpiredText)),
+                                     ),
+                                   ],
+                                 ),
+                               );
                             },
                           );
                         },

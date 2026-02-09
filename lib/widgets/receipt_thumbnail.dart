@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'smart_image.dart';
 
 class ReceiptThumbnail extends StatelessWidget {
   final String? imagePath;
@@ -17,11 +17,12 @@ class ReceiptThumbnail extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
-      child: imagePath != null && File(imagePath!).existsSync()
-          ? Image.file(
-              File(imagePath!),
+      child: imagePath != null && imagePath!.isNotEmpty
+          ? SmartImage(
+              imagePath: imagePath,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 20),
+              width: size,
+              height: size,
             )
           : const Icon(Icons.receipt, size: 20, color: Colors.grey),
     );

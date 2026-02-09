@@ -1,4 +1,4 @@
-import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../providers/warranty_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_data.dart';
+import '../widgets/smart_image.dart';
 import 'capture_screen.dart';
 
 
@@ -38,6 +39,30 @@ class DetailsScreen extends StatelessWidget {
         ),
         title: const Text('Warranty Details'),
         centerTitle: true,
+        actions: [
+          if (provider.isDownloading(item.id))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(right: 16),
+                child: SizedBox(
+                  width: 20, 
+                  height: 20, 
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryBrand)
+                ),
+              ),
+            )
+          else if (item.localImagePath != null)
+             const Padding(
+               padding: EdgeInsets.only(right: 16),
+               child: Icon(LucideIcons.circle_check, color: AppTheme.success, size: 20),
+             )
+          else if (item.imageUrl != null && item.imageUrl!.startsWith('http'))
+             IconButton(
+               icon: const Icon(LucideIcons.cloud_download, size: 22),
+               tooltip: "Download for Offline",
+               onPressed: () => provider.downloadOfflineAssets(item.id),
+             ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -60,8 +85,8 @@ class DetailsScreen extends StatelessWidget {
                               minScale: 0.5,
                               maxScale: 4.0,
                               child: Center(
-                                child: Image.file(
-                                  File(item.imagePath),
+                                child: SmartImage(
+                                  imagePath: item.imagePath,
                                   fit: BoxFit.contain,
                                 ),
                               ),
@@ -87,13 +112,9 @@ class DetailsScreen extends StatelessWidget {
                     children: [
                       Hero(
                         tag: 'img_${item.id}',
-                        child: Image.file(
-                          File(item.imagePath), 
+                        child: SmartImage(
+                          imagePath: item.imagePath, 
                           fit: BoxFit.cover,
-                          errorBuilder: (c,e,s) => Container(
-                            color: AppTheme.zinc100, 
-                            child: const Icon(LucideIcons.image, size: 48, color: AppTheme.zinc400)
-                          ),
                         ),
                       ),
                       
@@ -137,16 +158,33 @@ class DetailsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Count Down
-                    Text(
-                      days < 0 ? "${days.abs()} DAYS AGO" : "$days DAYS LEFT",
-                      style: Theme.of(context).textTheme.displayLarge,
-                    ),
+                    if (item.isLifetime)
+                      Text(
+                        "LIFETIME WARRANTY",
+                        style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                          color: AppTheme.success,
+                          fontSize: 28,
+                        ),
+                      )
+                    else 
+                      Text(
+                        days < 0 ? "${days.abs()} DAYS AGO" : "$days DAYS LEFT",
+                        style: Theme.of(context).textTheme.displayLarge,
+                      ),
+                      
                     const SizedBox(height: 8),
-                     Text(
-                      days < 0 ? "Expired on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}" 
-                              : "Expires on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}",
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 14),
-                    ),
+                    
+                    if (!item.isLifetime)
+                      Text(
+                        days < 0 ? "Expired on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}" 
+                                : "Expires on ${DateFormat('MMMM dd, yyyy').format(item.expiryDate)}",
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 14),
+                      )
+                    else
+                      Text(
+                        "Never Expires",
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 14, color: AppTheme.success),
+                      ),
                     
 
                     const SizedBox(height: 32),
@@ -155,7 +193,7 @@ class DetailsScreen extends StatelessWidget {
                     _buildDetailRow(context, LucideIcons.store, "Store", item.storeName),
                     _buildDetailRow(context, LucideIcons.calendar, "Purchased", DateFormat('yyyy-MM-dd').format(item.purchaseDate)),
                     _buildDetailRow(context, LucideIcons.hash, "Serial", item.serialNumber),
-                    _buildDetailRow(context, LucideIcons.clock, "Term", "${item.warrantyPeriodInMonths} Months"),
+                    _buildDetailRow(context, LucideIcons.clock, "Term", _formatDuration(item.warrantyPeriodInMonths)),
                     
                     const SizedBox(height: 32),
                     
@@ -196,8 +234,8 @@ class DetailsScreen extends StatelessWidget {
                                           minScale: 0.5,
                                           maxScale: 4.0,
                                           child: Center(
-                                            child: Image.file(
-                                              File(path),
+                                            child: SmartImage(
+                                              imagePath: path,
                                               fit: BoxFit.contain,
                                             ),
                                           ),
@@ -218,15 +256,13 @@ class DetailsScreen extends StatelessWidget {
                                   ),
                                 );
                               },
-                              child: Container(
-                                width: 120,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppTheme.dividerColor),
-                                  image: DecorationImage(
-                                    image: FileImage(File(path)),
-                                    fit: BoxFit.cover,
-                                  ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: SmartImage(
+                                  imagePath: path,
+                                  fit: BoxFit.cover,
+                                  width: 120,
+                                  height: 120,
                                 ),
                               ),
                             );
@@ -258,8 +294,7 @@ class DetailsScreen extends StatelessWidget {
                             value: item.notificationsEnabled ?? true,
                             onChanged: (value) {
                               item.notificationsEnabled = value;
-                              item.save();
-                              provider.notify();
+                              provider.updateWarranty(item);
                             },
                             activeTrackColor: AppTheme.primaryBrand,
                           ),
@@ -348,5 +383,13 @@ class DetailsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+  String _formatDuration(int months) {
+    if (months == -1 || months >= 9999) return "Lifetime";
+    if (months >= 12 && months % 12 == 0) {
+      final years = months ~/ 12;
+      return "$years ${years == 1 ? 'Year' : 'Years'}";
+    }
+    return "$months Months";
   }
 }

@@ -1,85 +1,147 @@
-import 'package:hive/hive.dart';
-
-part 'warranty_item.g.dart';
-
-@HiveType(typeId: 0)
-class WarrantyItem extends HiveObject {
-  @HiveField(0)
+class WarrantyItem {
   final String id;
-
-  @HiveField(1)
+  final String userId;
   final String name;
-
-  @HiveField(2)
   final String storeName;
-
-  @HiveField(3)
   final DateTime purchaseDate;
-
-  @HiveField(4)
   final int warrantyPeriodInMonths;
-
-  @HiveField(5)
   final String serialNumber;
-
-  @HiveField(6)
   final String category;
-
-  @HiveField(7)
-  final String imagePath;
-
-  @HiveField(8)
-  bool isArchived;
-
-  @HiveField(9)
-  bool? notificationsEnabled;
-
-  @HiveField(10)
-  List<String>? additionalDocuments;
+  final List<String> additionalDocuments;
+  final String? imageUrl;
+  final String? localImagePath; // Local path for downloaded/cached remote images
+  final bool isArchived;
+  final bool notificationsEnabled;
+  final DateTime createdAt;
+  final bool isDirty; // New field for offline sync status
 
   WarrantyItem({
     required this.id,
+    required this.userId,
     required this.name,
     required this.storeName,
     required this.purchaseDate,
     required this.warrantyPeriodInMonths,
-    required this.serialNumber,
+    this.serialNumber = '',
     required this.category,
-    required this.imagePath,
+    this.imageUrl,
+    this.localImagePath,
+    this.additionalDocuments = const [],
     this.isArchived = false,
-    this.notificationsEnabled,
-    this.additionalDocuments,
-  });
+    this.notificationsEnabled = true,
+    DateTime? createdAt,
+    this.isDirty = false,
+  }) : createdAt = createdAt ?? DateTime.now();
 
-  bool get isLifetime => warrantyPeriodInMonths > 1000;
-
+  // Calculate expiry date
   DateTime get expiryDate {
     if (isLifetime) {
-      // Return a distant future date essentially representing 'forever'
-      return DateTime(2999, 12, 31);
+      return DateTime(9999, 12, 31); // Lifetime
     }
-    // Basic calculation: add months. 
-    // Note: This logic adds 30 days * months or uses calendar months?
-    // Dart's standard DateTime add/subtract logic:
-    // Adding months directly isn't built-in perfectly, but mostly:
-    // date.copyWith(month: date.month + months) handles year rollover automatically.
-    // However, clean way:
-    return DateTime(
-      purchaseDate.year,
-      purchaseDate.month + warrantyPeriodInMonths,
-      purchaseDate.day,
-    );
+    return purchaseDate.add(Duration(days: warrantyPeriodInMonths * 30));
   }
 
+  // Calculate days remaining
   int get daysRemaining {
-    if (isLifetime) return 999999;
-    
+    if (isLifetime) return 9999;
     final now = DateTime.now();
-    // Reset time components for accurate day diff
     final today = DateTime(now.year, now.month, now.day);
     final expiry = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
     return expiry.difference(today).inDays;
   }
 
-  bool get isExpired => !isLifetime && daysRemaining <= 0;
+  bool get isExpired {
+    if (isLifetime) return false;
+    return DateTime.now().isAfter(expiryDate);
+  }
+
+  bool get isLifetime => warrantyPeriodInMonths == -1 || warrantyPeriodInMonths >= 9999;
+
+  // Backward compatibility getter for UI components
+  // Prefer local path if available (for manual downloads or offline creates)
+  // Fallback to imageUrl (remote)
+  String get imagePath {
+    if (localImagePath != null && localImagePath!.isNotEmpty) return localImagePath!;
+    return imageUrl ?? '';
+  }
+  
+  // Supabase JSON serialization
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'name': name,
+      'store_name': storeName,
+      'purchase_date': purchaseDate.toIso8601String(),
+      'warranty_period_months': warrantyPeriodInMonths,
+      'serial_number': serialNumber,
+      'category': category,
+      'image_url': imageUrl,
+      'is_archived': isArchived,
+      'notifications_enabled': notificationsEnabled,
+    };
+  }
+
+  factory WarrantyItem.fromJson(Map<String, dynamic> json) {
+    // Extract documents if available
+    List<String> docs = [];
+    if (json['warranty_documents'] != null) {
+      final docList = json['warranty_documents'] as List;
+      docs = docList.map((d) => d['document_url'] as String).toList();
+    }
+
+    return WarrantyItem(
+      id: json['id'],
+      userId: json['user_id'],
+      name: json['name'] ?? '',
+      storeName: json['store_name'] ?? '',
+      purchaseDate: DateTime.parse(json['purchase_date']),
+      warrantyPeriodInMonths: json['warranty_period_months'] ?? 0,
+      serialNumber: json['serial_number'] ?? '',
+      category: json['category'] ?? '',
+      imageUrl: json['image_url'],
+      localImagePath: json['local_image_path'], // Only from local DB
+      additionalDocuments: docs,
+      isArchived: json['is_archived'] ?? false,
+      notificationsEnabled: json['notifications_enabled'] ?? true,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      isDirty: json['is_dirty'] == 1 || json['is_dirty'] == true, // Handle SQLite (1) and generic true
+    );
+  }
+
+  WarrantyItem copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    String? storeName,
+    DateTime? purchaseDate,
+    int? warrantyPeriodInMonths,
+    String? serialNumber,
+    String? category,
+    String? imageUrl,
+    String? localImagePath,
+    List<String>? additionalDocuments,
+    bool? isArchived,
+    bool? notificationsEnabled,
+    bool? isDirty,
+  }) {
+    return WarrantyItem(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      storeName: storeName ?? this.storeName,
+      purchaseDate: purchaseDate ?? this.purchaseDate,
+      warrantyPeriodInMonths: warrantyPeriodInMonths ?? this.warrantyPeriodInMonths,
+      serialNumber: serialNumber ?? this.serialNumber,
+      category: category ?? this.category,
+      imageUrl: imageUrl ?? this.imageUrl,
+      localImagePath: localImagePath ?? this.localImagePath,
+      additionalDocuments: additionalDocuments ?? this.additionalDocuments,
+      isArchived: isArchived ?? this.isArchived,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      createdAt: createdAt,
+      isDirty: isDirty ?? this.isDirty,
+    );
+  }
 }
+

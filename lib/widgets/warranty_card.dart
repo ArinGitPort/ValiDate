@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -7,6 +5,7 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import '../models/warranty_item.dart';
 import '../theme/app_theme.dart';
 import '../utils/category_data.dart';
+import 'smart_image.dart';
 
 class WarrantyCard extends StatelessWidget {
   final WarrantyItem item;
@@ -99,16 +98,19 @@ class WarrantyCard extends StatelessWidget {
                   // Right: Status
                   Row(
                     children: [
-                      if (isExpired) ...[
+                      if (item.isDirty) ...[
+                         const Icon(LucideIcons.cloud_upload, size: 14, color: AppTheme.secondaryText),
+                         const SizedBox(width: 6),
+                      ] else if (isExpired) ...[
                         Icon(statusIcon, size: 14, color: statusText),
                         const SizedBox(width: 6),
                       ],
                       Text(
-                        statusLabel,
+                        item.isDirty ? "WAITING SYNC" : statusLabel,
                         style: GoogleFonts.manrope(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: statusText,
+                          color: item.isDirty ? AppTheme.secondaryText : statusText,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -134,10 +136,9 @@ class WarrantyCard extends StatelessWidget {
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: item.imagePath.isNotEmpty
-                        ? Image.file(
-                            File(item.imagePath),
+                        ? SmartImage(
+                            imagePath: item.imagePath,
                             fit: BoxFit.cover,
-                            errorBuilder: (c, e, s) => const Icon(LucideIcons.image, color: AppTheme.secondaryText),
                           )
                         : const Icon(LucideIcons.receipt, color: AppTheme.secondaryText),
                   ),
