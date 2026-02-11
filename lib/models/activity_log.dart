@@ -21,6 +21,7 @@ class ActivityLog {
       'user_id': userId,
       'action_type': actionType,
       'description': description,
+      'created_at': timestamp.toIso8601String(),
       'related_item_id': relatedItemId,
     };
   }
@@ -31,7 +32,7 @@ class ActivityLog {
       userId: json['user_id'],
       actionType: json['action_type'] ?? '',
       description: json['description'] ?? '',
-      timestamp: DateTime.parse(json['created_at']),
+      timestamp: DateTime.parse(json['created_at'] ?? json['timestamp']), // Support both
       relatedItemId: json['related_item_id'],
     );
   }

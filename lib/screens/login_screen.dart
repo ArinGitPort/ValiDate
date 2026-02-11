@@ -3,6 +3,7 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../test_supabase.dart';
 import 'register_screen.dart';
 import 'main_layout.dart';
 import 'forgot_password_screen.dart';
@@ -44,6 +45,10 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text,
         password: _passwordController.text,
       );
+      
+      // Run Supabase diagnostics after successful login
+      debugPrint('🔐 Login successful - running diagnostics...');
+      await SupabaseDiagnostic.runDiagnostics();
       
       if (mounted) {
         Navigator.pushReplacement(

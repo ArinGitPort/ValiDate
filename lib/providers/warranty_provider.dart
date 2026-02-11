@@ -38,20 +38,32 @@ class WarrantyProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     
+    debugPrint('🚀 WarrantyProvider: Initializing...');
+    debugPrint('👤 Current user ID: $_userId');
+    
     // Bind sync service listener to notify UI when syncing state changes
     _offlineSyncService.isSyncing.addListener(() {
+      // Notify to show/hide syncing indicator
       notifyListeners();
       // If sync just finished, reload data from local DB to reflect changes (e.g. clean dirty flags, updated URLs)
       if (!_offlineSyncService.isSyncing.value) {
-        _fetchData();
+        debugPrint('✅ Sync completed, reloading data...');
+        _fetchData().then((_) {
+          // Ensure UI updates after data is loaded
+          notifyListeners();
+          debugPrint('📱 UI updated with synced data');
+        });
       }
     });
 
     // Listen to auth changes
     _client.auth.onAuthStateChange.listen((data) {
+      debugPrint('🔐 Auth state changed');
       if (data.session != null) {
+        debugPrint('✅ User authenticated: ${data.session?.user.id}');
         _fetchData();
       } else {
+        debugPrint('⚠️ User logged out');
         _items = [];
         _logs = [];
         notifyListeners();
@@ -61,6 +73,7 @@ class WarrantyProvider with ChangeNotifier {
     // Connectivity listener to trigger sync when online
     Connectivity().onConnectivityChanged.listen((result) {
       if (!result.contains(ConnectivityResult.none)) {
+        debugPrint('🌐 Connectivity restored - triggering sync');
         _syncData();
       }
     });
@@ -68,52 +81,104 @@ class WarrantyProvider with ChangeNotifier {
     if (_userId != null) {
       await _fetchData();
       
-      // Try to sync on init if possible
-      _syncData();
+      // Try to sync on init if possible - await to ensure data loads before UI renders
+      await _syncData();
+    } else {
+      debugPrint('⚠️ No authenticated user - skipping initial data fetch');
     }
 
     _isLoading = false;
     notifyListeners();
+    debugPrint('✅ WarrantyProvider initialization complete');
   }
 
   Future<void> _fetchData() async {
-    if (_userId == null) return;
+    if (_userId == null) {
+      debugPrint('⚠️ WarrantyProvider._fetchData: No user ID, skipping fetch');
+      return;
+    }
 
     try {
+      debugPrint('📂 WarrantyProvider: Loading local data for user: $_userId');
+      
       // 1. Load Local Data First
       _items = await _db.getAllWarranties(_userId!);
+      debugPrint('✅ Loaded ${_items.length} warranties from local DB');
+      
+      // Debug: Show item details
+      if (_items.isNotEmpty) {
+        debugPrint('📋 First item: ${_items.first.name} (archived: ${_items.first.isArchived})');
+      }
+      
       _logs = await _db.getLogs(_userId!);
+      debugPrint('✅ Loaded ${_logs.length} activity logs from local DB');
+      
+      // Calculate active items for debugging
+      final activeCount = _items.where((item) => !item.isArchived).length;
+      debugPrint('✅ Active items: $activeCount / ${_items.length}');
+      
       notifyListeners();
-    } catch (e) {
-      debugPrint('WarrantyProvider: Error fetching user data: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ WarrantyProvider: Error fetching local data: $e');
+      debugPrint('Stack trace: $stackTrace');
+      // Still notify listeners to update UI even on error
+      notifyListeners();
     }
   }
 
   Future<void> _syncData() async {
+    debugPrint('🔄 WarrantyProvider: Starting sync process...');
+    
     // Process queue first
+    debugPrint('📤 Processing pending changes queue...');
     await _offlineSyncService.syncPendingChanges();
     
     // Then fetch fresh data from cloud and update local
     if (_userId != null && await _offlineSyncService.isOnline) {
+      debugPrint('🌐 Online - fetching remote data...');
       await _fetchRemoteDataAndUpdateLocal();
       await _fetchData(); // Reload from local to show fresh data
+      debugPrint('✅ Sync process completed');
+    } else {
+      if (_userId == null) {
+        debugPrint('⚠️ Cannot sync - no user authenticated');
+      } else {
+        debugPrint('📴 Offline - skipping remote fetch');
+      }
     }
   }
 
   Future<void> _fetchRemoteDataAndUpdateLocal() async {
-     try {
-      if (_userId == null) return;
+    try {
+      if (_userId == null) {
+        debugPrint('❌ WarrantyProvider: Cannot fetch remote data - user not authenticated');
+        return;
+      }
+
+      debugPrint('📡 WarrantyProvider: Fetching remote data for user: $_userId');
 
       // Fetch warranties (including remote docs)
+      debugPrint('🔄 Fetching warranties from Supabase...');
       final warrantyResponse = await _client
           .from('warranties')
           .select('*, warranty_documents(document_url)')
           .eq('user_id', _userId!)
           .order('created_at', ascending: false);
       
+      debugPrint('✅ Warranty response received: ${warrantyResponse.runtimeType}');
+      debugPrint('📊 Number of warranties fetched: ${(warrantyResponse as List).length}');
+
       final remoteItems = (warrantyResponse as List)
           .map((json) => WarrantyItem.fromJson(json))
           .toList();
+
+      debugPrint('✅ Parsed ${remoteItems.length} warranty items');
+      
+      // Debug: Show first item details if available
+      if (remoteItems.isNotEmpty) {
+        final firstItem = remoteItems.first;
+        debugPrint('📋 First warranty: ${firstItem.name} (id: ${firstItem.id}, archived: ${firstItem.isArchived})');
+      }
 
       // Update Local DB with Remote Data
       // For simplicity in this iteration: Overwrite entries found in remote
@@ -132,7 +197,10 @@ class WarrantyProvider with ChangeNotifier {
         }
       }
 
+      debugPrint('💾 Updated local database with remote warranties');
+
       // Fetch logs
+      debugPrint('🔄 Fetching activity logs from Supabase...');
       final logResponse = await _client
           .from('activity_logs')
           .select()
@@ -140,16 +208,33 @@ class WarrantyProvider with ChangeNotifier {
           .order('created_at', ascending: false)
           .limit(50);
 
-       final remoteLogs = (logResponse as List)
+      debugPrint('✅ Log response received: ${(logResponse as List).length} logs');
+
+      final remoteLogs = (logResponse as List)
           .map((json) => ActivityLog.fromJson(json))
           .toList();
           
-       for (var log in remoteLogs) {
-         await _db.insertLog(log);
-       }
+      for (var log in remoteLogs) {
+        await _db.insertLog(log);
+      }
        
-    } catch (e) {
-      debugPrint('WarrantyProvider: Error fetching remote data: $e');
+      debugPrint('✅ WarrantyProvider: Remote data fetch and local update completed successfully');
+    } catch (e, stackTrace) {
+      debugPrint('❌ WarrantyProvider: Error fetching remote data');
+      debugPrint('Error type: ${e.runtimeType}');
+      debugPrint('Error message: $e');
+      debugPrint('Stack trace: $stackTrace');
+      
+      // Check for specific Supabase errors
+      if (e is PostgrestException) {
+        debugPrint('🔴 Supabase PostgrestException:');
+        debugPrint('  - Code: ${e.code}');
+        debugPrint('  - Message: ${e.message}');
+        debugPrint('  - Details: ${e.details}');
+        debugPrint('  - Hint: ${e.hint}');
+      } else if (e is AuthException) {
+        debugPrint('🔴 Supabase AuthException: ${e.message}');
+      }
     }
   }
 
@@ -324,12 +409,15 @@ class WarrantyProvider with ChangeNotifier {
   // --- Utils ---
 
   void setSortOrder(String order) {
-    _settingsBox?.put('sort_order', order);
+    _sortOrder = order;
     notifyListeners();
   }
 
+  bool _globalNotificationsEnabled = true;
+  bool get globalNotificationsEnabled => _globalNotificationsEnabled;
+
   void setGlobalNotificationsEnabled(bool enabled) {
-    _settingsBox?.put('notifications_enabled', enabled);
+    _globalNotificationsEnabled = enabled;
     notifyListeners();
   }
 
@@ -347,44 +435,48 @@ class WarrantyProvider with ChangeNotifier {
   }
 
   Future<int> restoreData(List<dynamic> jsonList) async {
-    if (_box == null) return 0;
+    if (_userId == null) return 0;
     int importedCount = 0;
 
     for (var json in jsonList) {
       if (json is Map<String, dynamic>) {
-        // Basic duplicate check by Serial (if exists) or Name+PurchaseDate
-        // Ideally we check ID, but ID might overlap if generated similarly. 
-        // We will trust ID if provided, else generate new.
-        
-        // This is a simplified restore logic.
-        final String id = json['id'] ?? const Uuid().v4();
-        
-        // Check if ID exists
-        if (!_box!.containsKey(id)) {
-           try {
-             final item = WarrantyItem(
-                id: id,
-                name: json['name'],
-                storeName: json['store'] ?? "",
-                purchaseDate: DateTime.parse(json['purchaseDate']),
-                warrantyPeriodInMonths: json['warrantyMonths'] ?? 12,
-                serialNumber: json['serial'] ?? "",
-                category: json['category'] ?? "others",
-                imagePath: "", // Cannot restore local image paths easily unless relative or backed up zip
-                notificationsEnabled: true,
-             );
-             await _box!.put(id, item);
-             importedCount++;
-           } catch (e) {
-             debugPrint("Failed to import item: $e");
-           }
+        try {
+          // Generate new ID or use existing
+          final String id = json['id'] ?? const Uuid().v4();
+          
+          // Check if item already exists in local DB
+          final existingItems = await _db.getAllWarranties(_userId!);
+          final exists = existingItems.any((item) => item.id == id);
+          
+          if (!exists) {
+            final item = WarrantyItem(
+              id: id,
+              userId: _userId!,
+              name: json['name'] ?? 'Unnamed Item',
+              storeName: json['store_name'] ?? json['store'] ?? "",
+              purchaseDate: DateTime.parse(json['purchase_date'] ?? json['purchaseDate']),
+              warrantyPeriodInMonths: json['warranty_period_months'] ?? json['warrantyMonths'] ?? 12,
+              serialNumber: json['serial_number'] ?? json['serial'] ?? "",
+              category: json['category'] ?? "others",
+              imageUrl: json['image_url'],
+              notificationsEnabled: json['notifications_enabled'] ?? true,
+              isArchived: json['is_archived'] ?? false,
+            );
+            
+            await _db.insertWarranty(item, isDirty: true);
+            await _db.addToSyncQueue('INSERT', 'warranties', item.toJson());
+            importedCount++;
+          }
+        } catch (e) {
+          debugPrint("Failed to import item: $e");
         }
       }
     }
     
     if (importedCount > 0) {
-      notifyListeners();
+      await _fetchData();
       await _addLog("restored", "Restored $importedCount items from backup");
+      unawaited(_offlineSyncService.syncPendingChanges());
     }
     return importedCount;
   }

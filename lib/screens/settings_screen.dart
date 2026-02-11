@@ -391,6 +391,40 @@ class SettingsScreen extends StatelessWidget {
       }
     }
   }
+
+  Future<void> _performRestore(BuildContext context, WarrantyProvider provider) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/validate_backup.json');
+      
+      if (!await file.exists()) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No backup file found"))
+          );
+        }
+        return;
+      }
+      
+      final content = await file.readAsString();
+      final List<dynamic> data = jsonDecode(content);
+      
+      final count = await provider.restoreData(data);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Restored $count items successfully"))
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Restore failed: $e"))
+        );
+      }
+    }
+  }
+
   Future<void> _handleSignOut(BuildContext context) async {
     final shouldLogout = await showDialog<bool>(
       context: context,
